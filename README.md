@@ -1,4 +1,4 @@
-# speaking-speed
+# Speaking Speed
 
 A lightweight macOS menu-bar app that gives live feedback on speaking speed (words per minute), with the goal of encouraging slower, calmer speech.
 
