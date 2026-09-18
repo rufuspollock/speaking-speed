@@ -189,3 +189,30 @@ menu bar + optional overlay, bundling, signing, auto-start.
    (incomplete sentences, restarts, where the long runs were). Optional.
 4. **Native**: rewrite in Swift with `SpeechAnalyzer` only if the Python
    version proves useful and Xcode 26 is installed.
+
+## 6. Decision log
+
+**2026-09-18, stack: Swift, not Python, not Rust.** The Python plan
+(`2026-09-18-speaking-speed-phase1-plan.md`) was written because the
+machine had no Xcode. Rufus challenged it: a tray app that runs all day
+should be light on memory (Python + numpy + PyObjC idles at 150–250 MB vs
+20–40 MB native), and the interaction design matters more than raw
+feasibility. Decision:
+
+- Install Xcode 26, then build phase 1 as a **Swift package** run from the
+  terminal (`swift build` / `swift run`, no bundling yet). AppKit
+  `NSStatusItem` for the menu bar, `AVAudioEngine` for the mic, Accelerate
+  for the envelope, `NSPanel` overlay if needed. Phase 2 gets Apple's
+  on-device `SpeechAnalyzer` (Swift-only API) for free.
+- Rust rejected: same objc bindings tax for menu bar and overlay, no
+  SpeechAnalyzer access, no gain over Swift on macOS.
+- The Python plan is **superseded** but its DSP design, tests and
+  thresholds (Tasks 1 to 5) port directly. Optional: a throwaway Python
+  script with no UI to sanity-check the syllable-rate signal in an hour;
+  do not build the rumps tray app.
+- Two unknowns to keep separate: (1) is envelope-based syllable rate
+  usable on a laptop mic during a call; (2) does the cue and summary
+  design actually get noticed and used. (1) is cheap; (2) needs native.
+
+**Next action** (beads `spkspd-l1s`): rewrite the phase 1 plan for Swift,
+then execute.

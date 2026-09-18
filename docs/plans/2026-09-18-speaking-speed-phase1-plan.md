@@ -1,5 +1,7 @@
 # Speaking Speed Phase 1 Implementation Plan
 
+> **SUPERSEDED 2026-09-18**: stack switched to Swift. See section 6 of the research-and-design doc. Keep this file for the DSP algorithms, tests and thresholds, which port as-is.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 > Read `docs/plans/2026-09-18-speaking-speed-research-and-design.md` first for the why.
 
