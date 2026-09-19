@@ -5,7 +5,7 @@ private let T = Thresholds(calmMaxRate: 3.8, fastMinRate: 4.5, calmMaxRunS: 12, 
 
 private func m(_ rate: Double?, run: Double = 0) -> Metrics {
     Metrics(windowS: 10, phonationS: 5, syllables: 0, articulationRate: rate,
-            speechRate: nil, pauses: 0, meanPauseS: 0, currentRunS: run)
+            speechRate: nil, pauses: 0, meanPauseS: 0, currentRunS: run, speakingRate: rate)
 }
 
 @Test func classifyByRate() {

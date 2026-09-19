@@ -43,10 +43,10 @@ public final class Pipeline: @unchecked Sendable {
         let floor = noiseFloor(env)
         lastFloorDB = floor
         lastPeakDB = env.max() ?? dbFloor
+        let loud = percentile(env, 99) ?? dbFloor
         var cutoff = floor + config.speechMarginDB
-        if let below = config.speechBelowPeakDB, let loud = percentile(env, 99) {
-            cutoff = max(cutoff, loud - below)
-        }
+        if let below = config.speechBelowPeakDB { cutoff = max(cutoff, loud - below) }
+        if loud < config.minLoudDB { cutoff = .infinity }
         let mask = env.map { $0 > cutoff }
         var nuclei = [Bool](repeating: false, count: env.count)
         for i in findNuclei(env, mask: mask, minDipDB: config.minDipDB, minGapFrames: config.minGapFrames) {

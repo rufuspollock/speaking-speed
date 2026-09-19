@@ -52,7 +52,7 @@ func cmdMonitor() -> Never {
         let m = p.tick()
         let z = smoother.update(classify(m, cfg.thresholds))
         session.record(m, zone: z)
-        let rate = m.articulationRate.map { String(format: "%5.2f", $0) } ?? "  -- "
+        let rate = m.speakingRate.map { String(format: "%5.2f", $0) } ?? "  -- "
         let line = String(
             format: "%@ rate %@ syl/s  run %5.1fs  pauses %2d  talk %4.1f/%.0fs  floor %4.0f peak %4.0f dB   ",
             glyph[z]!, rate, m.currentRunS, m.pauses, m.phonationS, m.windowS, p.lastFloorDB, p.lastPeakDB)
@@ -90,7 +90,7 @@ func cmdCalibrate(seconds: Double) -> Never {
     }
     runUntilInterrupted(every: cfg.tickS) {
         let m = p.tick()
-        if let r = m.articulationRate, m.phonationS >= 3 { rates.append(r) }
+        if let r = m.speakingRate, m.phonationS >= 3 { rates.append(r) }
         let left = seconds - Date().timeIntervalSince(start)
         print(String(format: "\r%4.0fs left  samples %3d", max(left, 0), rates.count), terminator: "")
         fflush(stdout)

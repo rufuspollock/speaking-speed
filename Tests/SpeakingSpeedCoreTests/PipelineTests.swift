@@ -43,3 +43,12 @@ private func config(windowS: Double) -> Config {
 @Test func hopFollowsSampleRate() {
     #expect(Pipeline(config: Config(), sampleRate: 48000).hop == 960)
 }
+
+@Test func quietWindowIsNotSpeech() {
+    // A syllable train 30 dB down (a voice across the room) never counts as talking.
+    let p = Pipeline(config: Config(), sampleRate: Double(SR))
+    p.push(onNoiseBed(bursts(20, amp: 0.01), amp: 0.0002))
+    let m = p.tick()
+    #expect(m.phonationS == 0)
+    #expect(m.speakingRate == nil)
+}

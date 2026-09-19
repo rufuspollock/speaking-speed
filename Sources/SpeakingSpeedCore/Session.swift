@@ -1,7 +1,7 @@
 // Per-session CSV log and summary.
 import Foundation
 
-let csvFields = ["t", "zone", "articulation_rate", "current_run_s", "pauses",
+let csvFields = ["t", "zone", "speaking_rate", "articulation_rate", "current_run_s", "pauses",
                  "phonation_s", "syllables", "window_s"]
 
 public struct Summary: Equatable, Sendable {
@@ -18,7 +18,7 @@ public struct Summary: Equatable, Sendable {
 }
 
 public func summarize(_ rows: [Metrics], zones: [Zone], tickS: Double, name: String = "") -> Summary {
-    let rates = rows.compactMap(\.articulationRate)
+    let rates = rows.compactMap(\.speakingRate)
     let n = Double(max(rows.count, 1))
     var runsOver = 0
     var above = false
@@ -67,6 +67,7 @@ public final class Session {
         let cells = [
             String(format: "%.1f", Double(rows.count) * tickS),
             String(zone.rawValue),
+            m.speakingRate.map { String(format: "%.3f", $0) } ?? "",
             m.articulationRate.map { String(format: "%.3f", $0) } ?? "",
             String(format: "%.2f", m.currentRunS),
             String(m.pauses),
@@ -100,7 +101,9 @@ public func loadSummaries(dir: URL) throws -> [Summary] {
                 windowS: num(r, "window_s") ?? 10, phonationS: num(r, "phonation_s") ?? 0,
                 syllables: Int(num(r, "syllables") ?? 0), articulationRate: num(r, "articulation_rate"),
                 speechRate: nil, pauses: Int(num(r, "pauses") ?? 0), meanPauseS: 0,
-                currentRunS: num(r, "current_run_s") ?? 0))
+                currentRunS: num(r, "current_run_s") ?? 0,
+                // Sessions before 2026-09-19 only logged articulation rate.
+                speakingRate: col["speaking_rate"] != nil ? num(r, "speaking_rate") : num(r, "articulation_rate")))
             zones.append(Zone(rawValue: Int(num(r, "zone") ?? -1)) ?? .unknown)
         }
         // First row's t is one tick.

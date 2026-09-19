@@ -38,10 +38,10 @@ func cmdAnalyze(_ args: [String]) {
             let p = Pipeline(config: cfg, sampleRate: sr)
             p.push(x)
             let m = p.tick()
-            let rate = m.articulationRate.map { String(format: "%.2f", $0) } ?? "--"
-            print(String(format: "%@: %.1fs  talk %.1fs  syllables %d  rate %@ syl/s  pauses %d  floor %.0f peak %.0f dB",
-                         (path as NSString).lastPathComponent, Double(x.count) / sr,
-                         m.phonationS, m.syllables, rate, m.pauses, p.lastFloorDB, p.lastPeakDB))
+            func f(_ v: Double?) -> String { v.map { String(format: "%.2f", $0) } ?? "--" }
+            print(String(format: "%@: %.1fs  talk %.1fs  speaking %.1fs  syllables %d  rate %@  articulation %@ syl/s  pauses %d  floor %.0f peak %.0f dB",
+                         (path as NSString).lastPathComponent, Double(x.count) / sr, m.phonationS, m.speakingS,
+                         m.syllables, f(m.speakingRate), f(m.articulationRate), m.pauses, p.lastFloorDB, p.lastPeakDB))
         } catch {
             print("\(path): \(error)")
         }

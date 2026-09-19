@@ -64,3 +64,23 @@ private func approx(_ a: Double?, _ b: Double) -> Bool {
     let m = computeMetrics(speech: speech, nuclei: none(110), frameS: frameS, runPauseS: 0.5)
     #expect(approx(m.currentRunS, 2.2))
 }
+
+@Test func speakingRateCountsShortPausesButNotLongSilences() {
+    // 1 s speech, 1 s pause, 1 s speech, then 3 s silence (listening): 12 syllables.
+    let speech = frames(String(repeating: "s", count: 50) + String(repeating: ".", count: 50)
+        + String(repeating: "s", count: 50) + String(repeating: ".", count: 150))
+    var nuclei = none(300)
+    for i in stride(from: 0, to: 50, by: 9) { nuclei[i] = true; nuclei[100 + i] = true }
+    let m = computeMetrics(speech: speech, nuclei: nuclei, frameS: frameS, turnGapS: 2.0)
+    #expect(approx(m.speakingS, 3.0))
+    #expect(approx(m.speakingRate, 4.0))
+    #expect(approx(m.articulationRate, 6.0))
+}
+
+@Test func speakingTimeExcludesLongGapBetweenTurns() {
+    // 1 s speech, 2.5 s gap (other person talking), 1 s speech.
+    let speech = frames(String(repeating: "s", count: 50) + String(repeating: ".", count: 125)
+        + String(repeating: "s", count: 50))
+    let m = computeMetrics(speech: speech, nuclei: none(225), frameS: frameS, turnGapS: 2.0)
+    #expect(approx(m.speakingS, 2.0))
+}

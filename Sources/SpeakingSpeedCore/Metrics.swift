@@ -9,10 +9,13 @@ public struct Metrics: Equatable, Sendable {
     public var pauses: Int
     public var meanPauseS: Double
     public var currentRunS: Double        // seconds of speech since last pause >= runPauseS
+    public var speakingS: Double          // speech plus in-turn pauses (< turnGapS)
+    public var speakingRate: Double?      // syl / s of speakingS: slows when you pause
 
     public init(
         windowS: Double, phonationS: Double, syllables: Int, articulationRate: Double?,
-        speechRate: Double?, pauses: Int, meanPauseS: Double, currentRunS: Double
+        speechRate: Double?, pauses: Int, meanPauseS: Double, currentRunS: Double,
+        speakingS: Double = 0, speakingRate: Double? = nil
     ) {
         self.windowS = windowS
         self.phonationS = phonationS
@@ -22,6 +25,8 @@ public struct Metrics: Equatable, Sendable {
         self.pauses = pauses
         self.meanPauseS = meanPauseS
         self.currentRunS = currentRunS
+        self.speakingS = speakingS
+        self.speakingRate = speakingRate
     }
 }
 
@@ -46,7 +51,8 @@ public func computeMetrics(
     frameS: Double,
     minPhonationS: Double = 1.0,
     pauseMinS: Double = 0.35,
-    runPauseS: Double = 0.5
+    runPauseS: Double = 0.5,
+    turnGapS: Double = 2.0
 ) -> Metrics {
     let windowS = Double(speech.count) * frameS
     let phonationS = Double(speech.count(where: { $0 })) * frameS
@@ -60,6 +66,14 @@ public func computeMetrics(
         .filter { k in !rs[k].value && k > 0 && k < rs.count - 1 }
         .map { Double(rs[$0].length) * frameS }
         .filter { $0 >= pauseMinS }
+    // Speaking time: speech plus the pauses inside a turn. Silences of
+    // turnGapS or more (listening, thinking) and the window edges are excluded.
+    let speakingS = rs.indices.reduce(0.0) { acc, k in
+        let length = Double(rs[k].length) * frameS
+        if rs[k].value { return acc + length }
+        let interior = k > 0 && k < rs.count - 1
+        return interior && length < turnGapS ? acc + length : acc
+    }
     // Current run: walk back from the end until a silent run >= runPauseS.
     var current = 0.0
     for r in rs.reversed() {
@@ -75,6 +89,8 @@ public func computeMetrics(
         speechRate: spr,
         pauses: pauseLens.count,
         meanPauseS: pauseLens.isEmpty ? 0 : pauseLens.reduce(0, +) / Double(pauseLens.count),
-        currentRunS: current
+        currentRunS: current,
+        speakingS: speakingS,
+        speakingRate: art != nil && speakingS > 0 ? Double(syllables) / speakingS : nil
     )
 }

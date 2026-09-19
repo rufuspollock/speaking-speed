@@ -34,7 +34,7 @@ public struct Thresholds: Codable, Equatable, Sendable {
 }
 
 public func classify(_ m: Metrics, _ t: Thresholds) -> Zone {
-    guard let rate = m.articulationRate else { return .unknown }
+    guard let rate = m.speakingRate else { return .unknown }
     let byRate: Zone = rate >= t.fastMinRate ? .fast : rate >= t.calmMaxRate ? .brisk : .calm
     let run = m.currentRunS
     let byRun: Zone = run >= t.fastMinRunS ? .fast : run >= t.calmMaxRunS ? .brisk : .calm

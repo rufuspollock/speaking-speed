@@ -80,7 +80,7 @@ final class MenuBarController: NSObject {
         let m = p.tick()
         let z = smoother.update(classify(m, cfg.thresholds))
         s.record(m, zone: z)
-        let rate = m.articulationRate.map { String(format: "%.1f", $0) } ?? "--"
+        let rate = m.speakingRate.map { String(format: "%.1f", $0) } ?? "--"
         let run = m.currentRunS >= cfg.thresholds.calmMaxRunS ? " \(Int(m.currentRunS))s" : ""
         setTitle("\(glyph[z]!) \(rate)\(run)")
         statusLine.title = "rate \(rate) syl/s · run \(Int(m.currentRunS))s · pauses \(m.pauses)"

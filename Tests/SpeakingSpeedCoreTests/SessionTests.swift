@@ -4,7 +4,7 @@ import Testing
 
 private func m(_ rate: Double?, run: Double = 0, pauses: Int = 0) -> Metrics {
     Metrics(windowS: 10, phonationS: 5, syllables: 20, articulationRate: rate,
-            speechRate: nil, pauses: pauses, meanPauseS: 0.4, currentRunS: run)
+            speechRate: nil, pauses: pauses, meanPauseS: 0.4, currentRunS: run, speakingRate: rate)
 }
 
 private func tempDir() -> URL {
