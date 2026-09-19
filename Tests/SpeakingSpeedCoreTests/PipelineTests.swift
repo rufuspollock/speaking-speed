@@ -23,7 +23,9 @@ private func config(windowS: Double) -> Config {
 }
 
 @Test func ringBufferBounded() {
-    let p = Pipeline(config: config(windowS: 2), sampleRate: Double(SR))
+    var c = config(windowS: 2)
+    c.historyS = 2
+    let p = Pipeline(config: c, sampleRate: Double(SR))
     p.push(silence(10))
     #expect(p.framesBuffered == 100)
 }
@@ -51,4 +53,13 @@ private func config(windowS: Double) -> Config {
     let m = p.tick()
     #expect(m.phonationS == 0)
     #expect(m.speakingRate == nil)
+}
+
+@Test func historyOutlastsRateWindow() {
+    var c = Config()
+    c.windowS = 2
+    c.historyS = 6
+    let p = Pipeline(config: c, sampleRate: Double(SR))
+    p.push(silence(10))
+    #expect(p.framesBuffered == 300)
 }

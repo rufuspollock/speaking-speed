@@ -15,7 +15,7 @@ public final class Pipeline: @unchecked Sendable {
     public init(config: Config, sampleRate: Double) {
         self.config = config
         self.hop = Int((sampleRate * config.frameS).rounded())
-        self.maxFrames = Int((config.windowS / config.frameS).rounded())
+        self.maxFrames = Int((max(config.historyS, config.windowS) / config.frameS).rounded())
     }
 
     public func push(_ samples: [Float]) {
@@ -52,6 +52,7 @@ public final class Pipeline: @unchecked Sendable {
         for i in findNuclei(env, mask: mask, minDipDB: config.minDipDB, minGapFrames: config.minGapFrames) {
             nuclei[i] = true
         }
-        return computeMetrics(speech: mask, nuclei: nuclei, frameS: frameS)
+        return computeMetrics(speech: mask, nuclei: nuclei, frameS: frameS,
+                              rateWindowFrames: Int((config.windowS / frameS).rounded()))
     }
 }

@@ -11,7 +11,7 @@ private func tempDir() -> URL {
 @Test func defaultsWhenMissing() throws {
     let c = try Config.load(from: tempDir().appendingPathComponent("config.json"))
     #expect(c.thresholds.calmMaxRate == 3.8)
-    #expect(c.windowS == 10.0)
+    #expect(c.windowS == 5.0)
 }
 
 @Test func roundTrip() throws {
@@ -32,4 +32,16 @@ private func tempDir() -> URL {
     #expect(c.thresholds.fastMinRate == 4.0)
     #expect(c.thresholds.calmMaxRate == 3.8)
     #expect(c.tickS == 0.5)
+}
+
+@Test func saveWritesOnlyChangedSettings() throws {
+    // Unchanged settings stay out of the file, so improved defaults reach existing users.
+    let p = tempDir().appendingPathComponent("config.json")
+    var c = Config()
+    c.thresholds.calmMaxRate = 3.2
+    try c.save(to: p)
+    let text = try String(contentsOf: p, encoding: .utf8)
+    #expect(text.contains("calmMaxRate"))
+    #expect(!text.contains("windowS"))
+    #expect(!text.contains("fastMinRate"))
 }

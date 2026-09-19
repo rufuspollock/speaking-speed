@@ -84,3 +84,17 @@ private func approx(_ a: Double?, _ b: Double) -> Bool {
     let m = computeMetrics(speech: speech, nuclei: none(225), frameS: frameS, turnGapS: 2.0)
     #expect(approx(m.speakingS, 2.0))
 }
+
+@Test func rateUsesOnlyTheRecentWindowButRunUsesHistory() {
+    // 10 s of fast speech (5 syl/s), no pauses: 6 s earlier + 4 s recent.
+    // Recent window is 2 s with 6 syllables -> 3 syl/s; the run spans all 10 s.
+    let speech = frames(String(repeating: "s", count: 500))
+    var nuclei = none(500)
+    for i in stride(from: 0, to: 400, by: 10) { nuclei[i] = true }   // 40 early: 5 syl/s over 8 s
+    for i in stride(from: 400, to: 500, by: 17) { nuclei[i] = true } // 6 recent
+    let m = computeMetrics(speech: speech, nuclei: nuclei, frameS: frameS, rateWindowFrames: 100)
+    #expect(m.syllables == 6)
+    #expect(approx(m.phonationS, 2.0))
+    #expect(approx(m.speakingRate, 3.0))
+    #expect(approx(m.currentRunS, 10.0))
+}

@@ -18,9 +18,40 @@ func overriding(_ cfg: Config, with pairs: [String]) -> Config {
     }
 }
 
+/// Replay a file tick by tick, as the live app sees it, once the window is full.
+func slidingRates(_ path: String, _ cfg: Config) throws -> [Double] {
+    let (x, sr) = try readMono(path)
+    let p = Pipeline(config: cfg, sampleRate: sr)
+    let chunk = Int(sr * cfg.tickS)
+    var rates: [Double] = []
+    var i = 0
+    while i + chunk <= x.count {
+        p.push(Array(x[i..<(i + chunk)]))
+        i += chunk
+        let m = p.tick()
+        if Double(i) / sr >= cfg.windowS, let r = m.speakingRate { rates.append(r) }
+    }
+    return rates
+}
+
 func cmdAnalyze(_ args: [String]) {
-    let paths = args.filter { !$0.contains("=") }
+    let paths = args.filter { !$0.contains("=") && !$0.hasPrefix("--") }
     let base = overriding(loadConfig(), with: args.filter { $0.contains("=") })
+    if args.contains("--sliding") {
+        for path in paths {
+            do {
+                let r = try slidingRates(path, base)
+                let mean = r.reduce(0, +) / Double(max(r.count, 1))
+                let sd = (r.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(max(r.count, 1))).squareRoot()
+                print(String(format: "%@: window %.0fs  ticks %d  mean %.2f  sd %.2f  min %.2f  max %.2f",
+                             (path as NSString).lastPathComponent, base.windowS, r.count, mean, sd,
+                             r.min() ?? 0, r.max() ?? 0))
+            } catch {
+                print("\(path): \(error)")
+            }
+        }
+        return
+    }
     for path in paths {
         do {
             let (x, sr) = try readMono(path)

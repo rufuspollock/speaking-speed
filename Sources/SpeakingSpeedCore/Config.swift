@@ -3,7 +3,10 @@ import Foundation
 
 public struct Config: Codable, Equatable, Sendable {
     public var frameS = 0.02
-    public var windowS = 10.0
+    /// Rates average over this many recent seconds: shorter responds faster but jitters more.
+    public var windowS = 5.0
+    /// Speech detection, pauses and run length look back this far.
+    public var historyS = 30.0
     public var tickS = 0.5
     public var smoothFrames = 1
     public var speechMarginDB = 8.0
@@ -30,6 +33,7 @@ public struct Config: Codable, Equatable, Sendable {
         let d = Config()
         frameS = try c.decodeIfPresent(Double.self, forKey: .frameS) ?? d.frameS
         windowS = try c.decodeIfPresent(Double.self, forKey: .windowS) ?? d.windowS
+        historyS = try c.decodeIfPresent(Double.self, forKey: .historyS) ?? d.historyS
         tickS = try c.decodeIfPresent(Double.self, forKey: .tickS) ?? d.tickS
         smoothFrames = try c.decodeIfPresent(Int.self, forKey: .smoothFrames) ?? d.smoothFrames
         speechMarginDB = try c.decodeIfPresent(Double.self, forKey: .speechMarginDB) ?? d.speechMarginDB
@@ -54,8 +58,22 @@ public struct Config: Codable, Equatable, Sendable {
     public func save(to url: URL = defaultPath) throws {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let enc = JSONEncoder()
-        enc.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try enc.encode(self).write(to: url, options: .atomic)
+        // Write only what differs from the defaults, so later default changes still apply.
+        func dict(_ c: Config) throws -> [String: Any] {
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(c)) as! [String: Any]
+        }
+        func changed(_ mine: [String: Any], _ base: [String: Any]) -> [String: Any] {
+            mine.reduce(into: [:]) { out, kv in
+                if let sub = kv.value as? [String: Any], let baseSub = base[kv.key] as? [String: Any] {
+                    let d = changed(sub, baseSub)
+                    if !d.isEmpty { out[kv.key] = d }
+                } else if !((base[kv.key] as? NSObject)?.isEqual(kv.value) ?? false) {
+                    out[kv.key] = kv.value
+                }
+            }
+        }
+        let diff = changed(try dict(self), try dict(Config()))
+        try JSONSerialization.data(withJSONObject: diff, options: [.prettyPrinted, .sortedKeys])
+            .write(to: url, options: .atomic)
     }
 }

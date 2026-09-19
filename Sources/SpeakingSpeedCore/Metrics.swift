@@ -43,6 +43,8 @@ func runs(_ flags: [Bool]) -> [(value: Bool, length: Int)] {
     return out
 }
 
+/// Rates come from the last `rateWindowFrames` frames (all frames if nil), so
+/// they respond quickly; pauses and the current run use the whole history.
 /// `currentRunS` includes short gaps (< runPauseS) inside the run, by design:
 /// a 0.2 s breath does not end a "thought unit".
 public func computeMetrics(
@@ -52,11 +54,14 @@ public func computeMetrics(
     minPhonationS: Double = 1.0,
     pauseMinS: Double = 0.35,
     runPauseS: Double = 0.5,
-    turnGapS: Double = 2.0
+    turnGapS: Double = 2.0,
+    rateWindowFrames: Int? = nil
 ) -> Metrics {
-    let windowS = Double(speech.count) * frameS
-    let phonationS = Double(speech.count(where: { $0 })) * frameS
-    let syllables = nuclei.count(where: { $0 })
+    let start = rateWindowFrames.map { max(0, speech.count - $0) } ?? 0
+    let recent = Array(speech[start...])
+    let windowS = Double(recent.count) * frameS
+    let phonationS = Double(recent.count(where: { $0 })) * frameS
+    let syllables = nuclei[start...].count(where: { $0 })
     let art = phonationS >= minPhonationS ? Double(syllables) / phonationS : nil
     let spr = (windowS > 0 && art != nil) ? Double(syllables) / windowS : nil
 
@@ -68,10 +73,11 @@ public func computeMetrics(
         .filter { $0 >= pauseMinS }
     // Speaking time: speech plus the pauses inside a turn. Silences of
     // turnGapS or more (listening, thinking) and the window edges are excluded.
-    let speakingS = rs.indices.reduce(0.0) { acc, k in
-        let length = Double(rs[k].length) * frameS
-        if rs[k].value { return acc + length }
-        let interior = k > 0 && k < rs.count - 1
+    let rr = runs(recent)
+    let speakingS = rr.indices.reduce(0.0) { acc, k in
+        let length = Double(rr[k].length) * frameS
+        if rr[k].value { return acc + length }
+        let interior = k > 0 && k < rr.count - 1
         return interior && length < turnGapS ? acc + length : acc
     }
     // Current run: walk back from the end until a silent run >= runPauseS.
