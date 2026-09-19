@@ -8,6 +8,9 @@ public final class Pipeline: @unchecked Sendable {
     private var db: [Double] = []
     private var pending: [Float] = []
     private let lock = NSLock()
+    /// Envelope levels seen by the last tick, for tuning speechMarginDB.
+    public private(set) var lastFloorDB = dbFloor
+    public private(set) var lastPeakDB = dbFloor
 
     public init(config: Config, sampleRate: Double) {
         self.config = config
@@ -37,7 +40,10 @@ public final class Pipeline: @unchecked Sendable {
             return computeMetrics(speech: [], nuclei: [], frameS: frameS)
         }
         let env = smooth(raw, k: config.smoothFrames)
-        let mask = speechMask(env, floor: noiseFloor(env), marginDB: config.speechMarginDB)
+        let floor = noiseFloor(env)
+        lastFloorDB = floor
+        lastPeakDB = env.max() ?? dbFloor
+        let mask = speechMask(env, floor: floor, marginDB: config.speechMarginDB)
         var nuclei = [Bool](repeating: false, count: env.count)
         for i in findNuclei(env, mask: mask) { nuclei[i] = true }
         return computeMetrics(speech: mask, nuclei: nuclei, frameS: frameS)
