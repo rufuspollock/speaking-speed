@@ -108,6 +108,15 @@ func cmdReport(n: Int) {
         for s in try loadSummaries(dir: cfg.sessionsURL).suffix(n) {
             print(formatSummary(s, syllablesPerWord: cfg.syllablesPerWord))
         }
+        let convs = try ConversationLog(url: cfg.conversationsURL).all()
+        if !convs.isEmpty { print("\nConversations:") }
+        let df = DateFormatter()
+        df.dateFormat = "EEE d MMM HH:mm"
+        for c in convs.suffix(n) {
+            let rating = c.rating.map { " · felt \($0.rawValue)" } ?? ""
+            print("\(df.string(from: c.start)): "
+                  + formatConversation(c, syllablesPerWord: cfg.syllablesPerWord, longRunS: cfg.runNudgeS) + rating)
+        }
     } catch {
         fail("\(error)")
     }
@@ -120,7 +129,7 @@ let usage = """
       calibrate [--seconds S]   read a passage to set personal thresholds (default 45 s)
       record FILE [--seconds S]   save the mic to a WAV file
       analyze FILE...   whole-file metrics for recorded audio
-      report [-n N]   summaries of the last N sessions (default 10)
+      report [-n N]   summaries of the last N sessions and conversations (default 10)
     """
 
 let args = CommandLine.arguments.dropFirst()
