@@ -25,6 +25,7 @@ final class MenuBarController: NSObject {
     private var nudger = Nudger(runNudgeS: 15, fastMinRate: 4.5, cooldownS: 30)
     private var conversation = ConversationTracker()
     private var timer: Timer?
+    private let nudgePanel = NudgePanel()
 
     init(cfg: Config) {
         self.cfg = cfg
@@ -142,6 +143,7 @@ final class MenuBarController: NSObject {
         guard let s = session else { return }
         session = nil
         print(formatSummary(s.close(), syllablesPerWord: cfg.syllablesPerWord))
+        nudgePanel.hideIfShowing()
         setTitle(dot[.idle]!)
         toggleItem.title = "Start listening"
         statusLine.title = "idle"
@@ -158,8 +160,8 @@ final class MenuBarController: NSObject {
         s.record(m, zone: z)                      // per-tick CSV unchanged
         let avg = trend.update(m.speakingRate, dt: cfg.tickS)
         let u = nudger.update(m, trend: avg, now: Date().timeIntervalSinceReferenceDate)
-        // if u.onset && cfg.floatingNudge { nudgePanel.show(u.cue) }
-        // if u.cue < .slow { nudgePanel.hideIfShowing() }
+        if u.onset && cfg.floatingNudge { nudgePanel.show(u.cue) }
+        if u.cue < .slow { nudgePanel.hideIfShowing() }
         if let done = conversation.update(m, cue: u.cue, nudgeShown: u.onset && cfg.floatingNudge,
                                           now: Date(), dt: cfg.tickS) {
             conversationEnded(done)
