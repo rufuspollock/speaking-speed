@@ -1,0 +1,5 @@
+[
+  {"file": "rufus-slow.wav",   "pace": "slow",   "endsAt": "vital, if we are not",          "words": 59, "syllables": 108},
+  {"file": "rufus-normal.wav", "pace": "normal", "endsAt": "The stakes are high",           "words": 76, "syllables": 136},
+  {"file": "rufus-fast.wav",   "pace": "fast",   "endsAt": "civilization risked collapse",  "words": 83, "syllables": 151}
+]
