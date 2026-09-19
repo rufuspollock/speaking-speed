@@ -28,3 +28,11 @@ import Testing
     t.reset()
     #expect(t.update(4.0, dt: 0.5) == nil)
 }
+
+@Test func trendResetsAfterSilence() {
+    var t = TrendTracker(tauS: 25, warmupS: 1, resetAfterS: 10)
+    for _ in 0..<4 { _ = t.update(6.0, dt: 0.5) }
+    for _ in 0..<19 { #expect(t.update(nil, dt: 0.5) == 6.0) }  // 9.5 s quiet: held
+    #expect(t.update(nil, dt: 0.5) == nil)                     // 10 s quiet: forgotten
+    #expect(t.update(4.0, dt: 0.5) == nil)                     // warms up again
+}

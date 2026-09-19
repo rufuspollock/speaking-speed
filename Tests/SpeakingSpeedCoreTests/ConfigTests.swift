@@ -58,3 +58,10 @@ private func tempDir() -> URL {
     #expect(c.floatingNudge == true)
     #expect(c.conversationsLog == "~/.local/share/speaking-speed/conversations.jsonl")
 }
+
+@Test func speechAndSlowDownDefaults() throws {
+    let c = try Config.load(from: tempDir().appendingPathComponent("none.json"))
+    #expect(c.slowDownWPM == 220)
+    #expect(c.minSpeechS == 1)
+    #expect(c.trendResetS == 10)
+}

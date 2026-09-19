@@ -26,6 +26,13 @@ public struct Config: Codable, Equatable, Sendable {
     public var listenOnLaunch = true
     /// Show the "pause" nudge after this long talking without a real pause.
     public var runNudgeS = 15.0
+    /// Red "slow down" when the slow average is at or above this many words per minute.
+    /// Separate from the calibrated zones: conversation runs faster than read-aloud.
+    public var slowDownWPM = 220.0
+    /// Seconds of voice in the rate window before it counts as speaking (ignores key clicks).
+    public var minSpeechS = 1.0
+    /// The slow average starts afresh after this long without speech.
+    public var trendResetS = 10.0
     /// Time constant of the slow rate average that drives the "slow down" cue.
     public var trendTauS = 25.0
     /// Seconds of speech before the slow average counts.
@@ -73,6 +80,9 @@ public struct Config: Codable, Equatable, Sendable {
         minConversationS = try c.decodeIfPresent(Double.self, forKey: .minConversationS) ?? d.minConversationS
         showNumberInMenuBar = try c.decodeIfPresent(Bool.self, forKey: .showNumberInMenuBar) ?? d.showNumberInMenuBar
         floatingNudge = try c.decodeIfPresent(Bool.self, forKey: .floatingNudge) ?? d.floatingNudge
+        slowDownWPM = try c.decodeIfPresent(Double.self, forKey: .slowDownWPM) ?? d.slowDownWPM
+        minSpeechS = try c.decodeIfPresent(Double.self, forKey: .minSpeechS) ?? d.minSpeechS
+        trendResetS = try c.decodeIfPresent(Double.self, forKey: .trendResetS) ?? d.trendResetS
         conversationsLog = try c.decodeIfPresent(String.self, forKey: .conversationsLog) ?? d.conversationsLog
     }
 

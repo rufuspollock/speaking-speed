@@ -8,10 +8,12 @@ The menu bar shows a single dot. It only changes when there is something to do a
 
 | Dot | Means | Goes back when |
 |---|---|---|
-| ⚪ | nobody speaking | you speak |
+| ⚪ | nobody speaking (key clicks and bumps don't count) | you speak |
 | 🟢 | speaking, all fine | |
 | 🟠 + "pause" pill | you have talked for 15 s without a real pause | you pause |
-| 🔴 + "slow down" pill | your average pace over the last 25 s or so is at or above your fast threshold | the average drops 5 % below it |
+| 🔴 + "slow down" pill | your average pace over the last 25 s or so is 220 wpm or more | the average drops 5 % below it, or you stop talking for 10 s |
+
+The top line of the menu (and the dot's hover text) says in words what the colour means right now. The red average starts afresh after 10 s without speech and needs 10 s of new speech first, so an earlier fast patch never makes the dot red the moment you start talking.
 
 The pill is a small floating label at the top centre of the screen, near the camera, so you notice it on a call without looking away. It doesn't take focus, shows over full-screen apps, and fades after a few seconds or as soon as the cue clears. A new pill appears at most once every 30 s; the dot still changes in between.
 
@@ -80,6 +82,9 @@ Nudge and conversation settings (seconds unless noted):
 | Key | Default | |
 |---|---|---|
 | `runNudgeS` | 15 | talking this long without a pause shows "pause" |
+| `slowDownWPM` | 220 | red when the slow average reaches this (words per minute; not changed by `calibrate`) |
+| `minSpeechS` | 1 | seconds of voice in the last 5 s before it counts as speaking |
+| `trendResetS` | 10 | silence after which the slow average starts afresh |
 | `trendTauS` | 25 | time constant of the slow average behind "slow down" |
 | `trendWarmupS` | 10 | seconds of speech before the slow average counts |
 | `nudgeCooldownS` | 30 | minimum gap between pills |
@@ -89,7 +94,7 @@ Nudge and conversation settings (seconds unless noted):
 | `floatingNudge` | true | show the pill |
 | `conversationsLog` | see above | where conversations are saved |
 
-The "slow down" threshold is `thresholds.fastMinRate` (syllables per second), which `calibrate` sets from your normal pace.
+`calibrate` sets the calm / brisk / fast zones recorded in the session files from your read-aloud pace; conversation runs faster, so the red cue has its own threshold.
 
 The rate is averaged over the last 5 s, so it takes a few seconds to follow a change of pace (`windowS`; shorter is quicker but jumpier). Nothing counts as speech unless the window gets louder than `minLoudDB` (default −35 dBFS); if your mic is quiet and the rate never appears, lower it. The detector defaults were tuned on the clips in `fixtures/`.
 

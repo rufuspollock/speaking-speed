@@ -13,6 +13,7 @@ final class MenuBarController: NSObject {
     private let lastSummary = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let autoListenItem = NSMenuItem(title: "Listen when app starts", action: #selector(toggleAutoListen), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Open at login", action: #selector(toggleLogin), keyEquivalent: "")
+    private let cueItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let nowItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let trendItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let showNumberItem = NSMenuItem(title: "Show words per minute in menu bar", action: #selector(toggleShowNumber), keyEquivalent: "")
@@ -39,6 +40,8 @@ final class MenuBarController: NSObject {
         let menu = NSMenu()
         toggleItem.target = self
         statusLine.isEnabled = false
+        cueItem.isEnabled = false
+        cueItem.isHidden = true
         nowItem.isEnabled = false
         trendItem.isEnabled = false
         nowItem.isHidden = true
@@ -66,7 +69,7 @@ final class MenuBarController: NSObject {
         // Login items need a real app bundle (scripts/install.sh), not `swift run`.
         loginItem.isHidden = Bundle.main.bundleURL.pathExtension != "app"
         refreshLoginItem()
-        for i in [toggleItem, .separator(), nowItem, trendItem, statusLine, lastSummary, rateMenuItem, .separator(),
+        for i in [toggleItem, .separator(), cueItem, nowItem, trendItem, statusLine, lastSummary, rateMenuItem, .separator(),
                   showNumberItem, floatingItem, autoListenItem, loginItem, .separator(), quit] {
             menu.addItem(i)
         }
@@ -94,7 +97,7 @@ final class MenuBarController: NSObject {
 
     /// Fresh state for each listening stretch.
     private func resetTrackers() {
-        trend = TrendTracker(tauS: cfg.trendTauS, warmupS: cfg.trendWarmupS)
+        trend = TrendTracker(tauS: cfg.trendTauS, warmupS: cfg.trendWarmupS, resetAfterS: cfg.trendResetS)
         nudger = Nudger(config: cfg)
         conversation = ConversationTracker(config: cfg)
     }
@@ -139,6 +142,7 @@ final class MenuBarController: NSObject {
         }
         smoother = ZoneSmoother()
         resetTrackers()
+        cueItem.isHidden = false
         nowItem.isHidden = false
         trendItem.isHidden = false
         toggleItem.title = "Stop listening"
@@ -160,8 +164,10 @@ final class MenuBarController: NSObject {
         setTitle(dot[.idle]!)
         toggleItem.title = "Start listening"
         statusLine.title = "idle"
+        cueItem.isHidden = true
         nowItem.isHidden = true
         trendItem.isHidden = true
+        item.button?.toolTip = "Speaking Speed: not listening"
     }
 
     private func conversationEnded(_ s: ConversationSummary) {
@@ -192,7 +198,8 @@ final class MenuBarController: NSObject {
         let m = p.tick()
         let z = smoother.update(classify(m, cfg.thresholds))
         s.record(m, zone: z)                      // per-tick CSV unchanged
-        let avg = trend.update(m.speakingRate, dt: cfg.tickS)
+        let speaking = m.isSpeech(minSpeechS: cfg.minSpeechS)
+        let avg = trend.update(speaking ? m.speakingRate : nil, dt: cfg.tickS)
         let u = nudger.update(m, trend: avg, now: Date().timeIntervalSinceReferenceDate)
         if u.onset && cfg.floatingNudge { nudgePanel.show(u.cue) }
         if u.cue < .slow { nudgePanel.hideIfShowing() }
@@ -203,9 +210,22 @@ final class MenuBarController: NSObject {
         func wpm(_ r: Double?) -> String { r.map { String(Int(cfg.wordsPerMinute($0).rounded())) } ?? "--" }
         let number = cfg.showNumberInMenuBar ? " \(wpm(m.speakingRate))" : ""
         setTitle(dot[u.cue]! + number)
+        cueItem.title = explain(u.cue, run: m.currentRunS, avg: avg)
+        item.button?.toolTip = cueItem.title
         nowItem.title = "Now: ~\(wpm(m.speakingRate)) wpm (last \(Int(cfg.windowS)) s)"
         trendItem.title = "Last \(Int(cfg.trendTauS)) s: ~\(wpm(avg)) wpm"
         statusLine.title = "Talking \(Int(m.currentRunS)) s without a pause · \(m.pauses) pauses in \(Int(cfg.historyS)) s"
+    }
+
+    /// What the dot means right now, in words.
+    private func explain(_ cue: Cue, run: Double, avg: Double?) -> String {
+        let wpm = avg.map { "~\(Int(cfg.wordsPerMinute($0).rounded())) wpm" } ?? "--"
+        switch cue {
+        case .idle: return "⚪ Listening; no speech right now"
+        case .ok: return "🟢 Fine: pausing and pace both OK"
+        case .pause: return "🟠 Pause: \(Int(run)) s without a break (orange from \(Int(cfg.runNudgeS)) s)"
+        case .slow: return "🔴 Slow down: \(wpm) over the last \(Int(cfg.trendTauS)) s (red from \(Int(cfg.slowDownWPM)) wpm)"
+        }
     }
 
     @objc func quit() {

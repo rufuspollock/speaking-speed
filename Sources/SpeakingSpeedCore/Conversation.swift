@@ -25,12 +25,14 @@ public struct ConversationTracker: Sendable {
     public let endAfterSilenceS: Double
     public let minSpeakingS: Double
     public let longRunS: Double
+    public let minSpeechS: Double
 
     private var start: Date?
     private var speakingS = 0.0
     private var silentS = 0.0
     private var rates: [Double] = []
     private var prevRun = 0.0
+    private var runSpoken = false       // this run had real speech, not just a click
     private var longest = 0.0
     private var longRuns = 0
     private var pauses = 0
@@ -38,23 +40,29 @@ public struct ConversationTracker: Sendable {
     private var slowTicks = 0
     private var nudges = 0
 
-    public init(endAfterSilenceS: Double = 120, minSpeakingS: Double = 30, longRunS: Double = 15) {
+    public init(endAfterSilenceS: Double = 120, minSpeakingS: Double = 30, longRunS: Double = 15,
+                minSpeechS: Double = 1) {
         self.endAfterSilenceS = endAfterSilenceS
         self.minSpeakingS = minSpeakingS
         self.longRunS = longRunS
+        self.minSpeechS = minSpeechS
     }
 
     public init(config: Config) {
         self.init(endAfterSilenceS: config.conversationEndS, minSpeakingS: config.minConversationS,
-                  longRunS: config.runNudgeS)
+                  longRunS: config.runNudgeS, minSpeechS: config.minSpeechS)
     }
 
     /// Returns a summary when a conversation has just ended.
     public mutating func update(_ m: Metrics, cue: Cue, nudgeShown: Bool = false,
                                 now: Date, dt: Double) -> ConversationSummary? {
-        let speaking = m.currentRunS > 0
-        if m.currentRunS < prevRun { endRun(prevRun) }
+        let speaking = m.isSpeech(minSpeechS: minSpeechS)
+        if m.currentRunS < prevRun {
+            if runSpoken { endRun(prevRun) }
+            runSpoken = false
+        }
         prevRun = m.currentRunS
+        if speaking { runSpoken = true }
         if nudgeShown { nudges += 1 }
         if speaking {
             if start == nil { start = now }
@@ -72,7 +80,8 @@ public struct ConversationTracker: Sendable {
 
     /// Close whatever is open (stop listening, quit).
     public mutating func finish(now: Date) -> ConversationSummary? {
-        if prevRun > 0 { endRun(prevRun); prevRun = 0 }
+        if prevRun > 0 && runSpoken { endRun(prevRun) }
+        prevRun = 0
         return start == nil ? nil : close(now: now)
     }
 
@@ -83,8 +92,8 @@ public struct ConversationTracker: Sendable {
     }
 
     private mutating func close(now: Date) -> ConversationSummary? {
-        defer { self = ConversationTracker(endAfterSilenceS: endAfterSilenceS,
-                                           minSpeakingS: minSpeakingS, longRunS: longRunS) }
+        defer { self = ConversationTracker(endAfterSilenceS: endAfterSilenceS, minSpeakingS: minSpeakingS,
+                                           longRunS: longRunS, minSpeechS: minSpeechS) }
         guard let start, speakingS >= minSpeakingS else { return nil }
         return ConversationSummary(
             start: start, end: now, speakingS: speakingS, medianRate: median(rates),

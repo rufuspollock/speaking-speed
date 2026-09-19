@@ -93,3 +93,18 @@ private func sample() -> ConversationSummary {
     #expect(all.first { $0.id == a.id }?.rating == nil)
     #expect(all.first { $0.id == b.id }?.rating == .rushed)
 }
+
+@Test func blipsDoNotKeepAConversationOpen() throws {
+    var c = tracker()
+    let (_, t) = feed(&c, runs: [20, 20])
+    let blip = Metrics(windowS: 5, phonationS: 0.1, syllables: 1, articulationRate: nil, speechRate: nil,
+                       pauses: 0, meanPauseS: 0, currentRunS: 0.2, speakingRate: nil)
+    var s: ConversationSummary?
+    var tt = t
+    while s == nil && tt < t + 200 {
+        let isBlip = Int(tt * 2) % 20 == 0  // a key click every 10 s
+        s = c.update(isBlip ? blip : m(run: 0), cue: .idle, now: t0 + tt, dt: 0.5)
+        tt += 0.5
+    }
+    #expect(s != nil)
+}

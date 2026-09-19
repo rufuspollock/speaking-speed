@@ -60,3 +60,24 @@ private func nudger() -> Nudger {
     _ = n.update(m(run: 3), trend: 5.0, now: 40)
     #expect(n.pillsShown == 2)
 }
+
+@Test func keyboardBlipIsNotSpeech() {
+    var n = nudger()
+    _ = n.update(m(run: 5), trend: 5.0, now: 0)  // slow
+    let blip = Metrics(windowS: 5, phonationS: 0.1, syllables: 1, articulationRate: nil, speechRate: nil,
+                       pauses: 0, meanPauseS: 0, currentRunS: 0.2, speakingRate: nil)
+    #expect(n.update(blip, trend: 5.0, now: 60).cue == .idle)
+}
+
+@Test func slowNeedsAFreshAverage() {
+    var n = nudger()
+    #expect(n.update(m(run: 5), trend: 5.0, now: 0).cue == .slow)
+    #expect(n.update(m(run: 1), trend: nil, now: 60).cue == .ok)  // average reset after silence
+}
+
+@Test func slowThresholdFromWordsPerMinute() {
+    var c = Config()
+    c.slowDownWPM = 220
+    c.syllablesPerWord = 1.5
+    #expect(abs(Nudger(config: c).fastMinRate - 5.5) < 1e-9)
+}
