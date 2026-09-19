@@ -11,9 +11,11 @@ public enum Cue: Int, Sendable, Comparable {
 }
 
 extension Metrics {
-    /// Real speech, not a key click or a bump: at least `minSpeechS` of voice in the window.
-    public func isSpeech(minSpeechS: Double) -> Bool {
-        currentRunS > 0 && phonationS >= minSpeechS
+    /// Real speech, not key clicks or bumps: the current stretch of sound has at
+    /// least `minSpeechS` of voice and is mostly voice. Typing makes stretches of
+    /// short clicks with long gaps, which fail the second test even when long.
+    public func isSpeech(minSpeechS: Double, minVoicedShare: Double = 0.4) -> Bool {
+        currentRunS > 0 && runPhonationS >= minSpeechS && runPhonationS >= minVoicedShare * currentRunS
     }
 }
 
@@ -28,12 +30,15 @@ public struct Nudger: Sendable {
     public let fastMinRate: Double
     public let cooldownS: Double
     public let minSpeechS: Double
+    /// The dot stays on this long after the last real speech, through pauses between phrases.
+    public let holdS = 5.0
     /// The slow cue clears only when the average drops this far below the threshold.
     public let clearFraction = 0.95
     public private(set) var pillsShown = 0
     private var slowOn = false
     private var last: Cue = .idle
     private var lastPillAt: Double?
+    private var lastSpeechAt: Double?
 
     public init(runNudgeS: Double, fastMinRate: Double, cooldownS: Double, minSpeechS: Double = 1) {
         self.runNudgeS = runNudgeS
@@ -56,10 +61,12 @@ public struct Nudger: Sendable {
         } else {
             slowOn = false
         }
+        let speech = m.isSpeech(minSpeechS: minSpeechS)
+        if speech { lastSpeechAt = now }
         let cue: Cue
-        if m.currentRunS >= runNudgeS {
+        if speech && m.currentRunS >= runNudgeS {
             cue = .pause
-        } else if !m.isSpeech(minSpeechS: minSpeechS) {
+        } else if lastSpeechAt.map({ now - $0 >= holdS }) ?? true {
             cue = .idle
         } else if slowOn {
             cue = .slow

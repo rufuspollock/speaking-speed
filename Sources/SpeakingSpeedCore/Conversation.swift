@@ -42,7 +42,7 @@ public struct ConversationTracker: Sendable {
     private var nudges = 0
 
     public init(endAfterSilenceS: Double = 120, minSpeakingS: Double = 30, longRunS: Double = 15,
-                minSpeechS: Double = 1) {
+                minSpeechS: Double = 0.5) {
         self.endAfterSilenceS = endAfterSilenceS
         self.minSpeakingS = minSpeakingS
         self.longRunS = longRunS

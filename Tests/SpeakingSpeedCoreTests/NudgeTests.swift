@@ -77,7 +77,31 @@ private func nudger() -> Nudger {
 
 @Test func slowThresholdFromWordsPerMinute() {
     var c = Config()
-    c.slowDownWPM = 220
+    c.slowDownWPM = 200
     c.syllablesPerWord = 1.5
-    #expect(abs(Nudger(config: c).fastMinRate - 5.5) < 1e-9)
+    #expect(abs(Nudger(config: c).fastMinRate - 5.0) < 1e-9)
+}
+
+private func clicks(run: Double) -> Metrics {
+    // Typing: a stretch of short gaps with little voice in it; the window still holds earlier speech.
+    Metrics(windowS: 5, phonationS: 2, syllables: 3, articulationRate: nil, speechRate: nil, pauses: 0,
+            meanPauseS: 0, currentRunS: run, speakingRate: 4.0, runPhonationS: run * 0.1)
+}
+
+@Test func typingAfterSpeakingGoesIdle() {
+    var n = nudger()
+    _ = n.update(m(run: 5), trend: 4.0, now: 0)
+    #expect(n.update(clicks(run: 0.4), trend: 4.0, now: 2).cue == .ok)    // still just after speech
+    #expect(n.update(clicks(run: 0.4), trend: 4.0, now: 5).cue == .idle)  // 5 s since real speech
+}
+
+@Test func staysOnThroughAPauseBetweenPhrases() {
+    var n = nudger()
+    _ = n.update(m(run: 5), trend: 4.0, now: 0)
+    #expect(n.update(m(run: 0, speaking: false), trend: 4.0, now: 1.5).cue == .ok)
+}
+
+@Test func longTypingStretchIsNotAPauseNudge() {
+    var n = nudger()
+    #expect(n.update(clicks(run: 16), trend: 4.0, now: 0).cue == .idle)
 }

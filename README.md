@@ -8,10 +8,10 @@ The menu bar shows a single dot. It only changes when there is something to do a
 
 | Dot | Means | Goes back when |
 |---|---|---|
-| ⚪ | nobody speaking (key clicks and bumps don't count) | you speak |
+| ⚪ | no speech for 5 s (key clicks and bumps don't count) | you speak |
 | 🟢 | speaking, all fine | |
 | 🟠 + "pause" pill | you have talked for 15 s without a real pause | you pause |
-| 🔴 + "slow down" pill | your average pace over the last 25 s or so is 220 wpm or more | the average drops 5 % below it, or you stop talking for 10 s |
+| 🔴 + "slow down" pill | your average pace over the last 25 s or so is 200 wpm or more (change it under **Red above** in the menu) | the average drops 5 % below it, or you stop talking for 10 s |
 
 The top line of the menu (and the dot's hover text) says in words what the colour means right now. The red average starts afresh after 10 s without speech and needs 10 s of new speech first, so an earlier fast patch never makes the dot red the moment you start talking.
 
@@ -44,6 +44,7 @@ It lives in the menu bar only (no Dock icon) and starts listening straight away.
 
 - **Start / Stop listening**: toggle at any time; each listening stretch is one session.
 - **Start / End call**: mark a call to get a summary and rate it at the end (starts listening if needed). On calls, use headphones: the app can't yet tell your voice from theirs.
+- **Red above**: the pace that turns the dot red (180 / 200 / 220 / 240 wpm); takes effect at once.
 - **Show words per minute in menu bar**: the live number next to the dot (off by default).
 - **Floating nudges**: turn the pill off; the dot still changes.
 - **Listen when app starts**: turn off if you would rather start it by hand.
@@ -74,7 +75,7 @@ Use headphones on calls, otherwise the other side's voice counts as yours.
 
 ## Files
 
-- Config: `~/.config/speaking-speed/config.json` (written by `calibrate`; any key left out uses its default).
+- Config: `~/.config/speaking-speed/config.json` (written by `calibrate` and the menu toggles; any key left out uses its default). The app reads it at launch, so after editing it by hand, Quit and reopen the app. Settings changed from the menu apply straight away.
 - Sessions: `~/.local/share/speaking-speed/sessions/*.csv`, one row per half-second tick.
 - Calls: `~/.local/share/speaking-speed/conversations.jsonl`, one summary per line, with your rating.
 
@@ -83,8 +84,8 @@ Nudge and call settings (seconds unless noted):
 | Key | Default | |
 |---|---|---|
 | `runNudgeS` | 15 | talking this long without a pause shows "pause" |
-| `slowDownWPM` | 220 | red when the slow average reaches this (words per minute; not changed by `calibrate`) |
-| `minSpeechS` | 1 | seconds of voice in the last 5 s before it counts as speaking |
+| `slowDownWPM` | 200 | red when the slow average reaches this (words per minute; not changed by `calibrate`) |
+| `minSpeechS` | 0.5 | seconds of voice in the current stretch of sound before it counts as speaking; the stretch must also be at least 40 % voice, which rules out typing |
 | `trendResetS` | 10 | silence after which the slow average starts afresh |
 | `trendTauS` | 25 | time constant of the slow average behind "slow down" |
 | `trendWarmupS` | 10 | seconds of speech before the slow average counts |

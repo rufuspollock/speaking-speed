@@ -2,7 +2,7 @@
 import Foundation
 
 let csvFields = ["t", "zone", "speaking_rate", "articulation_rate", "current_run_s", "pauses",
-                 "phonation_s", "syllables", "window_s"]
+                 "phonation_s", "syllables", "window_s", "run_phonation_s"]
 
 public struct Summary: Equatable, Sendable {
     public var name: String
@@ -74,6 +74,7 @@ public final class Session {
             String(format: "%.2f", m.phonationS),
             String(m.syllables),
             String(format: "%.1f", m.windowS),
+            String(format: "%.2f", m.runPhonationS),
         ]
         handle.write(Data((cells.joined(separator: ",") + "\n").utf8))
     }

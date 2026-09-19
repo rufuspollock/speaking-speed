@@ -11,11 +11,12 @@ public struct Metrics: Equatable, Sendable {
     public var currentRunS: Double        // seconds of speech since last pause >= runPauseS
     public var speakingS: Double          // speech plus in-turn pauses (< turnGapS)
     public var speakingRate: Double?      // syl / s of speakingS: slows when you pause
+    public var runPhonationS: Double      // voice within the current run (clicks have little)
 
     public init(
         windowS: Double, phonationS: Double, syllables: Int, articulationRate: Double?,
         speechRate: Double?, pauses: Int, meanPauseS: Double, currentRunS: Double,
-        speakingS: Double = 0, speakingRate: Double? = nil
+        speakingS: Double = 0, speakingRate: Double? = nil, runPhonationS: Double? = nil
     ) {
         self.windowS = windowS
         self.phonationS = phonationS
@@ -27,6 +28,8 @@ public struct Metrics: Equatable, Sendable {
         self.currentRunS = currentRunS
         self.speakingS = speakingS
         self.speakingRate = speakingRate
+        // Tests often leave it out: treat the whole run as voiced.
+        self.runPhonationS = runPhonationS ?? currentRunS
     }
 }
 
@@ -81,11 +84,12 @@ public func computeMetrics(
         return interior && length < turnGapS ? acc + length : acc
     }
     // Current run: walk back from the end until a silent run >= runPauseS.
-    var current = 0.0
+    var current = 0.0, voiced = 0.0
     for r in rs.reversed() {
         let length = Double(r.length) * frameS
         if !r.value && length >= runPauseS { break }
         current += length
+        if r.value { voiced += length }
     }
     return Metrics(
         windowS: windowS,
@@ -97,6 +101,7 @@ public func computeMetrics(
         meanPauseS: pauseLens.isEmpty ? 0 : pauseLens.reduce(0, +) / Double(pauseLens.count),
         currentRunS: current,
         speakingS: speakingS,
-        speakingRate: art != nil && speakingS > 0 ? Double(syllables) / speakingS : nil
+        speakingRate: art != nil && speakingS > 0 ? Double(syllables) / speakingS : nil,
+        runPhonationS: voiced
     )
 }

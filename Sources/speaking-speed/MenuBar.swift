@@ -17,6 +17,7 @@ final class MenuBarController: NSObject {
     private let nowItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let trendItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let showNumberItem = NSMenuItem(title: "Show words per minute in menu bar", action: #selector(toggleShowNumber), keyEquivalent: "")
+    private let redItem = NSMenuItem(title: "Red above", action: nil, keyEquivalent: "")
     private let floatingItem = NSMenuItem(title: "Floating nudges", action: #selector(toggleFloating), keyEquivalent: "")
     private var capture: Capture?
     private var pipeline: Pipeline?
@@ -62,6 +63,15 @@ final class MenuBarController: NSObject {
             rateMenu.addItem(i)
         }
         rateMenuItem.submenu = rateMenu
+        let redMenu = NSMenu()
+        for wpm in [180, 200, 220, 240] {
+            let i = NSMenuItem(title: "\(wpm) wpm", action: #selector(setRed(_:)), keyEquivalent: "")
+            i.target = self
+            i.tag = wpm
+            redMenu.addItem(i)
+        }
+        redItem.submenu = redMenu
+        refreshRedItem()
         rateMenuItem.isHidden = true
         let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
@@ -72,7 +82,7 @@ final class MenuBarController: NSObject {
         loginItem.isHidden = Bundle.main.bundleURL.pathExtension != "app"
         refreshLoginItem()
         for i in [toggleItem, callItem, .separator(), cueItem, nowItem, trendItem, statusLine, lastSummary, rateMenuItem, .separator(),
-                  showNumberItem, floatingItem, autoListenItem, loginItem, .separator(), quit] {
+                  redItem, showNumberItem, floatingItem, autoListenItem, loginItem, .separator(), quit] {
             menu.addItem(i)
         }
         item.menu = menu
@@ -94,6 +104,19 @@ final class MenuBarController: NSObject {
         cfg.floatingNudge.toggle()
         floatingItem.state = cfg.floatingNudge ? .on : .off
         do { try cfg.save() } catch { statusLine.title = "could not save config: \(error)" }
+    }
+
+    /// Takes effect at once and is saved to the config.
+    @objc private func setRed(_ sender: NSMenuItem) {
+        cfg.slowDownWPM = Double(sender.tag)
+        nudger = Nudger(config: cfg)
+        refreshRedItem()
+        do { try cfg.save() } catch { statusLine.title = "could not save config: \(error)" }
+    }
+
+    private func refreshRedItem() {
+        redItem.title = "Red above \(Int(cfg.slowDownWPM)) wpm"
+        for i in redItem.submenu?.items ?? [] { i.state = Double(i.tag) == cfg.slowDownWPM ? .on : .off }
     }
 
     /// Fresh state for each listening stretch.

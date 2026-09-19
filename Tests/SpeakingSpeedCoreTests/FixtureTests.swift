@@ -42,3 +42,23 @@ private let haveFixtures = FileManager.default.fileExists(atPath: fixtures.appen
     #expect(slow * 1.1 < normal, "slow should read clearly below normal")
     #expect(normal < fast)
 }
+
+@Test(.enabled(if: haveFixtures)) func dotStaysOnWhileReadingAloud() throws {
+    for clip in try clips() {
+        let (x, sr) = try readMono(fixtures.appendingPathComponent(clip.file).path)
+        let cfg = Config()
+        let p = Pipeline(config: cfg, sampleRate: sr)
+        var n = Nudger(config: cfg)
+        let step = Int(sr * cfg.tickS)
+        var t = 0.0, talking = 0, idle = 0, started = false
+        for i in stride(from: 0, to: x.count - step + 1, by: step) {
+            p.push(Array(x[i..<i + step]))
+            let m = p.tick()
+            let cue = n.update(m, trend: nil, now: t).cue
+            t += cfg.tickS
+            if m.isSpeech(minSpeechS: cfg.minSpeechS) { started = true }
+            if started { talking += 1; if cue == .idle { idle += 1 } }  // from first word to the end
+        }
+        #expect(Double(idle) / Double(talking) <= 0.05, "\(clip.file): idle \(idle) of \(talking) ticks")
+    }
+}

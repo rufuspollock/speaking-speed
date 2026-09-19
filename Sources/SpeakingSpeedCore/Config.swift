@@ -28,9 +28,10 @@ public struct Config: Codable, Equatable, Sendable {
     public var runNudgeS = 15.0
     /// Red "slow down" when the slow average is at or above this many words per minute.
     /// Separate from the calibrated zones: conversation runs faster than read-aloud.
-    public var slowDownWPM = 220.0
-    /// Seconds of voice in the rate window before it counts as speaking (ignores key clicks).
-    public var minSpeechS = 1.0
+    public var slowDownWPM = 200.0
+    /// Seconds of voice in the current stretch of sound before it counts as speaking.
+    /// Key clicks make short, mostly silent stretches and never get there.
+    public var minSpeechS = 0.5
     /// The slow average starts afresh after this long without speech.
     public var trendResetS = 10.0
     /// Time constant of the slow rate average that drives the "slow down" cue.

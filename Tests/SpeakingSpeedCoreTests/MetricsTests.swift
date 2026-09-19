@@ -98,3 +98,15 @@ private func approx(_ a: Double?, _ b: Double) -> Bool {
     #expect(approx(m.speakingRate, 3.0))
     #expect(approx(m.currentRunS, 10.0))
 }
+
+@Test func runPhonationCountsVoiceInTheCurrentRunOnly() {
+    let t = { (n: Int) in [Bool](repeating: true, count: n) }
+    let f = { (n: Int) in [Bool](repeating: false, count: n) }
+    // old run, 0.6 s pause, then 0.6 s voice, 0.2 s gap, 0.4 s voice
+    let speech = t(50) + f(30) + t(30) + f(10) + t(20)
+    let m = computeMetrics(speech: speech, nuclei: f(speech.count), frameS: 0.02)
+    #expect(abs(m.currentRunS - 1.2) < 1e-9)
+    #expect(abs(m.runPhonationS - 1.0) < 1e-9)
+    let quiet = computeMetrics(speech: speech + f(30), nuclei: f(speech.count + 30), frameS: 0.02)
+    #expect(quiet.runPhonationS == 0)
+}

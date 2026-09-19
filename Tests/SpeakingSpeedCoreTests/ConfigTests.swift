@@ -60,7 +60,7 @@ private func tempDir() -> URL {
 
 @Test func speechAndSlowDownDefaults() throws {
     let c = try Config.load(from: tempDir().appendingPathComponent("none.json"))
-    #expect(c.slowDownWPM == 220)
-    #expect(c.minSpeechS == 1)
+    #expect(c.slowDownWPM == 200)
+    #expect(c.minSpeechS == 0.5)
     #expect(c.trendResetS == 10)
 }
