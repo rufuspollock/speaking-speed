@@ -121,7 +121,13 @@ let usage = """
 
 let args = CommandLine.arguments.dropFirst()
 switch args.first {
-case "run": runMenuBar(loadConfig(), startListening: args.contains("--start"))
+case "run":
+    let cfg = loadConfig()
+    runMenuBar(cfg, startListening: args.contains("--start") || cfg.listenOnLaunch)
+case nil where Bundle.main.bundleURL.pathExtension == "app":
+    // Launched as Speaking Speed.app (Finder, login item).
+    let cfg = loadConfig()
+    runMenuBar(cfg, startListening: cfg.listenOnLaunch)
 case "monitor": cmdMonitor()
 case "calibrate":
     cmdCalibrate(seconds: args.count == 3 && args.dropFirst().first == "--seconds" ? Double(args.last!) ?? 45 : 45)

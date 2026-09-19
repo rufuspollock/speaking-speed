@@ -1,14 +1,17 @@
 // Menu-bar indicator: glyph + rate (+ run length when long), Start/Stop, Quit.
 import AppKit
+import ServiceManagement
 import SpeakingSpeedCore
 
 @MainActor
 final class MenuBarController: NSObject {
-    private let cfg: Config
+    private var cfg: Config
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let toggleItem = NSMenuItem(title: "Start listening", action: #selector(toggle), keyEquivalent: "s")
     private let statusLine = NSMenuItem(title: "idle", action: nil, keyEquivalent: "")
     private let lastSummary = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let autoListenItem = NSMenuItem(title: "Listen when app starts", action: #selector(toggleAutoListen), keyEquivalent: "")
+    private let loginItem = NSMenuItem(title: "Open at login", action: #selector(toggleLogin), keyEquivalent: "")
     private var capture: Capture?
     private var pipeline: Pipeline?
     private var session: Session?
@@ -27,8 +30,39 @@ final class MenuBarController: NSObject {
         lastSummary.isHidden = true
         let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
-        for i in [toggleItem, statusLine, lastSummary, .separator(), quit] { menu.addItem(i) }
+        autoListenItem.target = self
+        autoListenItem.state = cfg.listenOnLaunch ? .on : .off
+        loginItem.target = self
+        // Login items need a real app bundle (scripts/install.sh), not `swift run`.
+        loginItem.isHidden = Bundle.main.bundleURL.pathExtension != "app"
+        refreshLoginItem()
+        for i in [toggleItem, statusLine, lastSummary, .separator(), autoListenItem, loginItem, .separator(), quit] {
+            menu.addItem(i)
+        }
         item.menu = menu
+    }
+
+    @objc private func toggleAutoListen() {
+        cfg.listenOnLaunch.toggle()
+        autoListenItem.state = cfg.listenOnLaunch ? .on : .off
+        do { try cfg.save() } catch { statusLine.title = "could not save config: \(error)" }
+    }
+
+    @objc private func toggleLogin() {
+        do {
+            if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+            } else {
+                try SMAppService.mainApp.register()
+            }
+        } catch {
+            statusLine.title = "login item: \(error.localizedDescription)"
+        }
+        refreshLoginItem()
+    }
+
+    private func refreshLoginItem() {
+        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
 
     private func setTitle(_ s: String) {

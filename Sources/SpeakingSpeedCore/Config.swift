@@ -16,6 +16,8 @@ public struct Config: Codable, Equatable, Sendable {
     public var minDipDB = 3.0
     public var minGapFrames = 4
     public var thresholds = Thresholds()
+    /// Menu bar app starts listening as soon as it launches.
+    public var listenOnLaunch = true
     public var sessionsDir = "~/.local/share/speaking-speed/sessions"
 
     public static let defaultPath = FileManager.default.homeDirectoryForCurrentUser
@@ -36,6 +38,7 @@ public struct Config: Codable, Equatable, Sendable {
         minDipDB = try c.decodeIfPresent(Double.self, forKey: .minDipDB) ?? d.minDipDB
         minGapFrames = try c.decodeIfPresent(Int.self, forKey: .minGapFrames) ?? d.minGapFrames
         thresholds = try c.decodeIfPresent(Thresholds.self, forKey: .thresholds) ?? d.thresholds
+        listenOnLaunch = try c.decodeIfPresent(Bool.self, forKey: .listenOnLaunch) ?? d.listenOnLaunch
         sessionsDir = try c.decodeIfPresent(String.self, forKey: .sessionsDir) ?? d.sessionsDir
     }
 

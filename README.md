@@ -15,23 +15,35 @@ These combine into a zone: 🟢 calm, 🟡 brisk, 🔴 fast. The zone only chang
 Needs Xcode 26 or later (for Swift 6 and the macOS SDK).
 
 ```bash
-swift build -c release
-.build/release/speaking-speed calibrate   # read a passage at your normal pace, ~45 s
-.build/release/speaking-speed run --start # menu bar indicator, listening at once
+scripts/install.sh    # builds a release, installs ~/Applications/Speaking Speed.app, opens it
 ```
+
+It lives in the menu bar only (no Dock icon) and starts listening straight away. From its menu:
+
+- **Start / Stop listening**: toggle at any time; each listening stretch is one session.
+- **Listen when app starts**: turn off if you would rather start it by hand.
+- **Open at login**: keep it running all the time.
+
+Re-run `scripts/install.sh` after pulling changes. Then calibrate once to your own pace:
+
+```bash
+~/Applications/Speaking\ Speed.app/Contents/MacOS/speaking-speed calibrate   # read a passage at normal pace, ~45 s
+```
+
+The same binary has terminal commands (or use `swift run speaking-speed <command>` during development):
 
 Commands:
 
 | Command | What it does |
 |---|---|
-| `run [--start]` | Menu bar indicator. Title is `zone rate [run]`; menu has Start/Stop, live status, last session summary, Quit. |
+| `run` | Menu bar indicator from the terminal. Title is `zone rate [run]`. |
 | `monitor` | Same metrics on one updating terminal line, plus noise floor and peak dB for tuning. |
 | `record FILE [--seconds S]` | Save the mic to a WAV file. |
 | `analyze FILE... [key=value...]` | Whole-file metrics for recorded audio; `key=value` overrides detector settings, e.g. `minDipDB=2`. |
 | `calibrate [--seconds S]` | Sets your thresholds from a read-aloud at normal pace: calm is below 90 % of your normal rate, fast above 105 %. |
 | `report [-n N]` | One-line summaries of recent sessions. |
 
-The first run asks for microphone access for your terminal app. If it never asks, check System Settings → Privacy & Security → Microphone.
+The app asks for microphone access on first launch; terminal commands ask on behalf of your terminal app. If it never asks, check System Settings → Privacy & Security → Microphone.
 
 Use headphones on calls, otherwise the other side's voice counts as yours.
 
