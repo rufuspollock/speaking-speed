@@ -7,6 +7,11 @@ public struct Config: Codable, Equatable, Sendable {
     public var tickS = 0.5
     public var smoothFrames = 3
     public var speechMarginDB = 8.0
+    /// If set, speech must also be within this many dB of the window's loud
+    /// speech (99th percentile), as in de Jong & Wempe (they use 25).
+    public var speechBelowPeakDB: Double? = nil
+    public var minDipDB = 2.0
+    public var minGapFrames = 4
     public var thresholds = Thresholds()
     public var sessionsDir = "~/.local/share/speaking-speed/sessions"
 
@@ -23,6 +28,9 @@ public struct Config: Codable, Equatable, Sendable {
         tickS = try c.decodeIfPresent(Double.self, forKey: .tickS) ?? d.tickS
         smoothFrames = try c.decodeIfPresent(Int.self, forKey: .smoothFrames) ?? d.smoothFrames
         speechMarginDB = try c.decodeIfPresent(Double.self, forKey: .speechMarginDB) ?? d.speechMarginDB
+        speechBelowPeakDB = try c.decodeIfPresent(Double.self, forKey: .speechBelowPeakDB)
+        minDipDB = try c.decodeIfPresent(Double.self, forKey: .minDipDB) ?? d.minDipDB
+        minGapFrames = try c.decodeIfPresent(Int.self, forKey: .minGapFrames) ?? d.minGapFrames
         thresholds = try c.decodeIfPresent(Thresholds.self, forKey: .thresholds) ?? d.thresholds
         sessionsDir = try c.decodeIfPresent(String.self, forKey: .sessionsDir) ?? d.sessionsDir
     }

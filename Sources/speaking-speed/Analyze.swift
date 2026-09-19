@@ -11,8 +11,25 @@ func readMono(_ path: String) throws -> (samples: [Float], sampleRate: Double) {
     return (samples, format.sampleRate)
 }
 
-func cmdAnalyze(_ paths: [String]) {
-    let base = loadConfig()
+/// Apply `key=value` overrides (numbers) to a config, via its JSON form.
+func overriding(_ cfg: Config, with pairs: [String]) -> Config {
+    guard !pairs.isEmpty else { return cfg }
+    var dict = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(cfg)) as! [String: Any]
+    for pair in pairs {
+        let kv = pair.split(separator: "=", maxSplits: 1).map(String.init)
+        guard kv.count == 2, let v = Double(kv[1]) else { fail("bad override \(pair), want key=number") }
+        dict[kv[0]] = v
+    }
+    do {
+        return try JSONDecoder().decode(Config.self, from: JSONSerialization.data(withJSONObject: dict))
+    } catch {
+        fail("bad override: \(error)")
+    }
+}
+
+func cmdAnalyze(_ args: [String]) {
+    let paths = args.filter { !$0.contains("=") }
+    let base = overriding(loadConfig(), with: args.filter { $0.contains("=") })
     for path in paths {
         do {
             let (x, sr) = try readMono(path)
@@ -22,9 +39,9 @@ func cmdAnalyze(_ paths: [String]) {
             p.push(x)
             let m = p.tick()
             let rate = m.articulationRate.map { String(format: "%.2f", $0) } ?? "--"
-            print(String(format: "%@: %.1fs  talk %.1fs  syllables %d  rate %@ syl/s  pauses %d",
+            print(String(format: "%@: %.1fs  talk %.1fs  syllables %d  rate %@ syl/s  pauses %d  floor %.0f peak %.0f dB",
                          (path as NSString).lastPathComponent, Double(x.count) / sr,
-                         m.phonationS, m.syllables, rate, m.pauses))
+                         m.phonationS, m.syllables, rate, m.pauses, p.lastFloorDB, p.lastPeakDB))
         } catch {
             print("\(path): \(error)")
         }
