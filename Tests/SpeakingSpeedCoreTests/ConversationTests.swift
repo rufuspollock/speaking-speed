@@ -68,3 +68,28 @@ private func tracker() -> ConversationTracker {
     let s = try #require(done)
     #expect(abs(s.fractionSlow - 0.5) < 0.05)
 }
+
+private func sample() -> ConversationSummary {
+    ConversationSummary(start: t0, end: t0 + 600, speakingS: 300, medianRate: 4.2, longestRunS: 22,
+                        longRuns: 2, pauses: 40, pausesPerMin: 8, fractionSlow: 0.1, nudges: 3, rating: nil)
+}
+
+@Test func logAppendsAndReadsBack() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jsonl")
+    let log = ConversationLog(url: url)
+    try log.append(sample())
+    try log.append(sample())
+    #expect(try log.all().count == 2)
+}
+
+@Test func ratingIsStoredOnTheRightConversation() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jsonl")
+    let log = ConversationLog(url: url)
+    let a = sample(), b = sample()
+    try log.append(a)
+    try log.append(b)
+    try log.rate(b.id, .rushed)
+    let all = try log.all()
+    #expect(all.first { $0.id == a.id }?.rating == nil)
+    #expect(all.first { $0.id == b.id }?.rating == .rushed)
+}

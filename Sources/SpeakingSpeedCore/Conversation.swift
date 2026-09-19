@@ -94,3 +94,60 @@ public struct ConversationTracker: Sendable {
             nudges: nudges, rating: nil)
     }
 }
+
+/// One JSON object per line, oldest first.
+public struct ConversationLog: Sendable {
+    public let url: URL
+
+    public init(url: URL) { self.url = url }
+
+    private static let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        e.outputFormatting = .sortedKeys
+        return e
+    }()
+
+    private static let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }()
+
+    public func append(_ s: ConversationSummary) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let line = try Self.encoder.encode(s) + Data("\n".utf8)
+        if let h = try? FileHandle(forWritingTo: url) {
+            defer { try? h.close() }
+            h.seekToEndOfFile()
+            h.write(line)
+        } else {
+            try line.write(to: url)
+        }
+    }
+
+    public func all() throws -> [ConversationSummary] {
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+        return try String(contentsOf: url, encoding: .utf8).split(separator: "\n").map {
+            try Self.decoder.decode(ConversationSummary.self, from: Data($0.utf8))
+        }
+    }
+
+    public func rate(_ id: UUID, _ rating: Rating) throws {
+        let updated = try all().map { s -> ConversationSummary in
+            var s = s
+            if s.id == id { s.rating = rating }
+            return s
+        }
+        let data = try updated.map { try Self.encoder.encode($0) + Data("\n".utf8) }.reduce(Data(), +)
+        try data.write(to: url, options: .atomic)
+    }
+}
+
+/// One line for the menu, notification and `report`.
+public func formatConversation(_ s: ConversationSummary, syllablesPerWord: Double, longRunS: Double = 15) -> String {
+    let wpm = s.medianRate.map { "\(Int(($0 * 60 / syllablesPerWord).rounded())) wpm" } ?? "-- wpm"
+    let mins = Int((s.speakingS / 60).rounded())
+    return "\(mins) min talking · \(wpm) · \(Int(s.pausesPerMin.rounded())) pauses/min · "
+        + "longest \(Int(s.longestRunS))s without a pause · \(s.longRuns) over \(Int(longRunS))s"
+}
