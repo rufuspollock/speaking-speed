@@ -44,3 +44,8 @@ func noise(_ seconds: Double, amp: Double = 0.002, seed: UInt64 = 0) -> [Float] 
         Float(amp * sqrt(-2 * log(uniform())) * cos(2 * .pi * uniform()))
     }
 }
+
+/// Mix a constant noise bed under x, as a real mic would have.
+func onNoiseBed(_ x: [Float], amp: Double = 0.002) -> [Float] {
+    zip(x, noise(Double(x.count) / Double(SR), amp: amp, seed: 1)).map { $0 + $1 }
+}
