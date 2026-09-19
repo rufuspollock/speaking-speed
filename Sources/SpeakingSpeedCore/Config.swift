@@ -24,6 +24,23 @@ public struct Config: Codable, Equatable, Sendable {
     public var thresholds = Thresholds()
     /// Menu bar app starts listening as soon as it launches.
     public var listenOnLaunch = true
+    /// Show the "pause" nudge after this long talking without a real pause.
+    public var runNudgeS = 15.0
+    /// Time constant of the slow rate average that drives the "slow down" cue.
+    public var trendTauS = 25.0
+    /// Seconds of speech before the slow average counts.
+    public var trendWarmupS = 10.0
+    /// Minimum gap between floating nudges; the dot still changes.
+    public var nudgeCooldownS = 30.0
+    /// A conversation ends after this long with no speech.
+    public var conversationEndS = 120.0
+    /// Conversations with less speech than this are not summarised.
+    public var minConversationS = 30.0
+    /// Show the live words-per-minute number next to the dot.
+    public var showNumberInMenuBar = false
+    /// Show a small floating pill near the top of the screen for nudges.
+    public var floatingNudge = true
+    public var conversationsLog = "~/.local/share/speaking-speed/conversations.jsonl"
     public var sessionsDir = "~/.local/share/speaking-speed/sessions"
 
     public static let defaultPath = FileManager.default.homeDirectoryForCurrentUser
@@ -48,6 +65,15 @@ public struct Config: Codable, Equatable, Sendable {
         thresholds = try c.decodeIfPresent(Thresholds.self, forKey: .thresholds) ?? d.thresholds
         listenOnLaunch = try c.decodeIfPresent(Bool.self, forKey: .listenOnLaunch) ?? d.listenOnLaunch
         sessionsDir = try c.decodeIfPresent(String.self, forKey: .sessionsDir) ?? d.sessionsDir
+        runNudgeS = try c.decodeIfPresent(Double.self, forKey: .runNudgeS) ?? d.runNudgeS
+        trendTauS = try c.decodeIfPresent(Double.self, forKey: .trendTauS) ?? d.trendTauS
+        trendWarmupS = try c.decodeIfPresent(Double.self, forKey: .trendWarmupS) ?? d.trendWarmupS
+        nudgeCooldownS = try c.decodeIfPresent(Double.self, forKey: .nudgeCooldownS) ?? d.nudgeCooldownS
+        conversationEndS = try c.decodeIfPresent(Double.self, forKey: .conversationEndS) ?? d.conversationEndS
+        minConversationS = try c.decodeIfPresent(Double.self, forKey: .minConversationS) ?? d.minConversationS
+        showNumberInMenuBar = try c.decodeIfPresent(Bool.self, forKey: .showNumberInMenuBar) ?? d.showNumberInMenuBar
+        floatingNudge = try c.decodeIfPresent(Bool.self, forKey: .floatingNudge) ?? d.floatingNudge
+        conversationsLog = try c.decodeIfPresent(String.self, forKey: .conversationsLog) ?? d.conversationsLog
     }
 
     /// Estimated words per minute for a rate in syllables per second.
@@ -57,6 +83,10 @@ public struct Config: Codable, Equatable, Sendable {
 
     public var sessionsURL: URL {
         URL(fileURLWithPath: (sessionsDir as NSString).expandingTildeInPath)
+    }
+
+    public var conversationsURL: URL {
+        URL(fileURLWithPath: (conversationsLog as NSString).expandingTildeInPath)
     }
 
     public static func load(from url: URL = defaultPath) throws -> Config {

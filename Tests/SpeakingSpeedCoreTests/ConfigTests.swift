@@ -45,3 +45,16 @@ private func tempDir() -> URL {
     #expect(!text.contains("windowS"))
     #expect(!text.contains("fastMinRate"))
 }
+
+@Test func v2Defaults() throws {
+    let c = try Config.load(from: tempDir().appendingPathComponent("none.json"))
+    #expect(c.runNudgeS == 15)
+    #expect(c.trendTauS == 25)
+    #expect(c.trendWarmupS == 10)
+    #expect(c.nudgeCooldownS == 30)
+    #expect(c.conversationEndS == 120)
+    #expect(c.minConversationS == 30)
+    #expect(c.showNumberInMenuBar == false)
+    #expect(c.floatingNudge == true)
+    #expect(c.conversationsLog == "~/.local/share/speaking-speed/conversations.jsonl")
+}
