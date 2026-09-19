@@ -24,12 +24,13 @@ final class MenuBarController: NSObject {
     private var smoother = ZoneSmoother()
     private var trend = TrendTracker()
     private var nudger = Nudger(runNudgeS: 15, fastMinRate: 4.5, cooldownS: 30)
-    private var conversation = ConversationTracker()
+    private var call: ConversationTracker?       // set between Start call and End call
+    private var callStart: Date?
     private var timer: Timer?
     private let nudgePanel = NudgePanel()
-    private lazy var notifier = ConversationNotifier { [weak self] id, r in self?.rate(id, r) }
     private var lastConversationID: UUID?
-    private let rateMenuItem = NSMenuItem(title: "Rate last conversation", action: nil, keyEquivalent: "")
+    private let callItem = NSMenuItem(title: "Start call", action: #selector(toggleCall), keyEquivalent: "c")
+    private let rateMenuItem = NSMenuItem(title: "Rate last call", action: nil, keyEquivalent: "")
 
     init(cfg: Config) {
         self.cfg = cfg
@@ -39,6 +40,7 @@ final class MenuBarController: NSObject {
         resetTrackers()
         let menu = NSMenu()
         toggleItem.target = self
+        callItem.target = self
         statusLine.isEnabled = false
         cueItem.isEnabled = false
         cueItem.isHidden = true
@@ -69,12 +71,11 @@ final class MenuBarController: NSObject {
         // Login items need a real app bundle (scripts/install.sh), not `swift run`.
         loginItem.isHidden = Bundle.main.bundleURL.pathExtension != "app"
         refreshLoginItem()
-        for i in [toggleItem, .separator(), cueItem, nowItem, trendItem, statusLine, lastSummary, rateMenuItem, .separator(),
+        for i in [toggleItem, callItem, .separator(), cueItem, nowItem, trendItem, statusLine, lastSummary, rateMenuItem, .separator(),
                   showNumberItem, floatingItem, autoListenItem, loginItem, .separator(), quit] {
             menu.addItem(i)
         }
         item.menu = menu
-        _ = notifier
     }
 
     @objc private func toggleAutoListen() {
@@ -99,7 +100,6 @@ final class MenuBarController: NSObject {
     private func resetTrackers() {
         trend = TrendTracker(tauS: cfg.trendTauS, warmupS: cfg.trendWarmupS, resetAfterS: cfg.trendResetS)
         nudger = Nudger(config: cfg)
-        conversation = ConversationTracker(config: cfg)
     }
 
     @objc private func toggleLogin() {
@@ -127,6 +127,51 @@ final class MenuBarController: NSObject {
         if session == nil { start() } else { stop() }
     }
 
+    /// Calls are explicit: summary and rating only for what you mark as a call.
+    @objc private func toggleCall() {
+        if call != nil { endCall(); return }
+        if session == nil { start() }
+        guard session != nil else { return }
+        call = ConversationTracker(config: cfg)
+        callStart = Date()
+        callItem.title = "End call"
+    }
+
+    private func endCall(ask: Bool = true) {
+        guard var c = call else { return }
+        call = nil
+        callStart = nil
+        callItem.title = "Start call"
+        guard let done = c.finish(now: Date()) else {
+            if ask { showDialog("Not enough of your speech in that call to summarise.", buttons: ["OK"]) }
+            return
+        }
+        let text = formatConversation(done, syllablesPerWord: cfg.syllablesPerWord, longRunS: cfg.runNudgeS)
+        do { try ConversationLog(url: cfg.conversationsURL).append(done) } catch { statusLine.title = "\(error)" }
+        lastConversationID = done.id
+        lastSummary.title = "Last call: " + text
+        lastSummary.isHidden = false
+        rateMenuItem.title = "Rate last call"
+        rateMenuItem.isHidden = false
+        print(text)
+        guard ask else { return }
+        let ratings = Rating.allCases
+        let i = showDialog("How did that call feel?", info: text,
+                           buttons: ratings.map { $0.rawValue.capitalized } + ["Skip"])
+        if i < ratings.count { rate(done.id, ratings[i]) }
+    }
+
+    /// Returns the index of the button clicked.
+    @discardableResult
+    private func showDialog(_ message: String, info: String = "", buttons: [String]) -> Int {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.informativeText = info
+        for b in buttons { alert.addButton(withTitle: b) }
+        NSApp.activate()
+        return alert.runModal().rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+    }
+
     private func start() {
         do {
             try Capture.requestAccess()
@@ -150,10 +195,10 @@ final class MenuBarController: NSObject {
             timeInterval: cfg.tickS, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
     }
 
-    private func stop() {
+    private func stop(ask: Bool = true) {
         timer?.invalidate()
         timer = nil
-        if session != nil, let done = conversation.finish(now: Date()) { conversationEnded(done) }
+        endCall(ask: ask)
         capture?.stop()
         capture = nil
         pipeline = nil
@@ -168,18 +213,6 @@ final class MenuBarController: NSObject {
         nowItem.isHidden = true
         trendItem.isHidden = true
         item.button?.toolTip = "Speaking Speed: not listening"
-    }
-
-    private func conversationEnded(_ s: ConversationSummary) {
-        let text = formatConversation(s, syllablesPerWord: cfg.syllablesPerWord, longRunS: cfg.runNudgeS)
-        do { try ConversationLog(url: cfg.conversationsURL).append(s) } catch { statusLine.title = "\(error)" }
-        lastConversationID = s.id
-        lastSummary.title = "Last conversation: " + text
-        lastSummary.isHidden = false
-        rateMenuItem.title = "Rate last conversation"
-        rateMenuItem.isHidden = false
-        notifier.post(s, text: text)
-        print(text)
     }
 
     @objc private func rateLast(_ sender: NSMenuItem) {
@@ -203,10 +236,11 @@ final class MenuBarController: NSObject {
         let u = nudger.update(m, trend: avg, now: Date().timeIntervalSinceReferenceDate)
         if u.onset && cfg.floatingNudge { nudgePanel.show(u.cue) }
         if u.cue < .slow { nudgePanel.hideIfShowing() }
-        if let done = conversation.update(m, cue: u.cue, nudgeShown: u.onset && cfg.floatingNudge,
-                                          now: Date(), dt: cfg.tickS) {
-            conversationEnded(done)
+        if var c = call {
+            _ = c.update(m, cue: u.cue, nudgeShown: u.onset && cfg.floatingNudge, now: Date(), dt: cfg.tickS)
+            call = c
         }
+        if let t = callStart { callItem.title = "End call (\(Int(Date().timeIntervalSince(t) / 60)) min)" }
         func wpm(_ r: Double?) -> String { r.map { String(Int(cfg.wordsPerMinute($0).rounded())) } ?? "--" }
         let number = cfg.showNumberInMenuBar ? " \(wpm(m.speakingRate))" : ""
         setTitle(dot[u.cue]! + number)
@@ -229,7 +263,7 @@ final class MenuBarController: NSObject {
     }
 
     @objc func quit() {
-        stop()
+        stop(ask: false)
         NSApp.terminate(nil)
     }
 }

@@ -17,7 +17,7 @@ The top line of the menu (and the dot's hover text) says in words what the colou
 
 The pill is a small floating label at the top centre of the screen, near the camera, so you notice it on a call without looking away. It doesn't take focus, shows over full-screen apps, and fades after a few seconds or as soon as the cue clears. A new pill appears at most once every 30 s; the dot still changes in between.
 
-After each conversation (it ends after 2 minutes of silence, and needs at least 30 s of your speech), you get a notification: **How did that feel?** with Calm / OK / Rushed buttons and a one-line summary (minutes talking, words per minute, pauses per minute, longest stretch without a pause). Comparing your own sense with the numbers is how the feel for it builds. You can also rate from the menu.
+For a call or conversation you want to review, choose **Start call** from the menu at the beginning and **End call** at the end. The dot works the same either way; the call just marks what to summarise. On End call you get a one-line summary (minutes talking, words per minute, pauses per minute, longest stretch without a pause) and one question, **How did that call feel?**: Calm, OK or Rushed. Comparing your own sense with the numbers is how the feel for it builds. Skip it and you can rate later from the menu. Stopping listening also ends a call.
 
 ### Why no number?
 
@@ -28,7 +28,7 @@ The numbers are still there, one click away in the menu:
 - **Now**: words per minute over the last 5 s, estimated from the syllables the app hears (from the mic's loudness, no speech recognition), converted at 1.5 syllables per word (`syllablesPerWord`). Speaking time includes short pauses (under 2 s), so pausing more slows it down; longer silences, such as listening on a call, are left out. It is an estimate: formal or technical speech has longer words, so it reads high.
 - **Last 25 s**: the slow average that drives the 🔴 cue.
 - **Talking N s without a pause** (a real pause is ≥ 0.5 s), and pauses in the last 30 s.
-- **Last conversation**: the summary line, and a submenu to rate it.
+- **Last call**: the summary line, and a submenu to rate it.
 
 Tick **Show words per minute in menu bar** to put the live number back next to the dot.
 
@@ -43,6 +43,7 @@ scripts/install.sh    # builds a release, installs ~/Applications/Speaking Speed
 It lives in the menu bar only (no Dock icon) and starts listening straight away. From its menu:
 
 - **Start / Stop listening**: toggle at any time; each listening stretch is one session.
+- **Start / End call**: mark a call to get a summary and rate it at the end (starts listening if needed). On calls, use headphones: the app can't yet tell your voice from theirs.
 - **Show words per minute in menu bar**: the live number next to the dot (off by default).
 - **Floating nudges**: turn the pill off; the dot still changes.
 - **Listen when app starts**: turn off if you would rather start it by hand.
@@ -60,12 +61,12 @@ Commands:
 
 | Command | What it does |
 |---|---|
-| `run` | Menu bar app from the terminal (notifications need the installed app). |
+| `run` | Menu bar app from the terminal. |
 | `monitor` | Same metrics on one updating terminal line, plus noise floor and peak dB for tuning. |
 | `record FILE [--seconds S]` | Save the mic to a WAV file. |
 | `analyze FILE... [key=value...]` | Whole-file metrics for recorded audio; `key=value` overrides detector settings, e.g. `minDipDB=2`. |
 | `calibrate [--seconds S]` | Sets your thresholds from a read-aloud at normal pace: calm is below 90 % of your normal rate, fast above 105 %. |
-| `report [-n N]` | One-line summaries of recent sessions and conversations, with your ratings. |
+| `report [-n N]` | One-line summaries of recent sessions and calls, with your ratings. |
 
 The app asks for microphone access on first launch; terminal commands ask on behalf of your terminal app. If it never asks, check System Settings → Privacy & Security → Microphone.
 
@@ -75,9 +76,9 @@ Use headphones on calls, otherwise the other side's voice counts as yours.
 
 - Config: `~/.config/speaking-speed/config.json` (written by `calibrate`; any key left out uses its default).
 - Sessions: `~/.local/share/speaking-speed/sessions/*.csv`, one row per half-second tick.
-- Conversations: `~/.local/share/speaking-speed/conversations.jsonl`, one summary per line, with your rating.
+- Calls: `~/.local/share/speaking-speed/conversations.jsonl`, one summary per line, with your rating.
 
-Nudge and conversation settings (seconds unless noted):
+Nudge and call settings (seconds unless noted):
 
 | Key | Default | |
 |---|---|---|
@@ -88,11 +89,10 @@ Nudge and conversation settings (seconds unless noted):
 | `trendTauS` | 25 | time constant of the slow average behind "slow down" |
 | `trendWarmupS` | 10 | seconds of speech before the slow average counts |
 | `nudgeCooldownS` | 30 | minimum gap between pills |
-| `conversationEndS` | 120 | silence that ends a conversation |
-| `minConversationS` | 30 | less speech than this isn't summarised |
+| `minConversationS` | 10 | a call with less of your speech than this isn't summarised |
 | `showNumberInMenuBar` | false | live words per minute next to the dot |
 | `floatingNudge` | true | show the pill |
-| `conversationsLog` | see above | where conversations are saved |
+| `conversationsLog` | see above | where calls are saved |
 
 `calibrate` sets the calm / brisk / fast zones recorded in the session files from your read-aloud pace; conversation runs faster, so the red cue has its own threshold.
 

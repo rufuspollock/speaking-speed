@@ -19,8 +19,9 @@ public struct ConversationSummary: Codable, Equatable, Sendable, Identifiable {
     public var rating: Rating?
 }
 
-/// Splits continuous listening into conversations: one starts with speech and
-/// ends after `endAfterSilenceS` without any. Feed it every tick.
+/// Summarises a conversation. Feed it every tick; a call made from the menu
+/// (`init(config:)`) only ends with `finish`, while `endAfterSilenceS` can
+/// also close one after that long without speech.
 public struct ConversationTracker: Sendable {
     public let endAfterSilenceS: Double
     public let minSpeakingS: Double
@@ -48,8 +49,9 @@ public struct ConversationTracker: Sendable {
         self.minSpeechS = minSpeechS
     }
 
+    /// An explicit call: never ends on silence.
     public init(config: Config) {
-        self.init(endAfterSilenceS: config.conversationEndS, minSpeakingS: config.minConversationS,
+        self.init(endAfterSilenceS: .infinity, minSpeakingS: config.minConversationS,
                   longRunS: config.runNudgeS, minSpeechS: config.minSpeechS)
     }
 
@@ -94,7 +96,7 @@ public struct ConversationTracker: Sendable {
     private mutating func close(now: Date) -> ConversationSummary? {
         defer { self = ConversationTracker(endAfterSilenceS: endAfterSilenceS, minSpeakingS: minSpeakingS,
                                            longRunS: longRunS, minSpeechS: minSpeechS) }
-        guard let start, speakingS >= minSpeakingS else { return nil }
+        guard let start, speakingS > 0, speakingS >= minSpeakingS else { return nil }
         return ConversationSummary(
             start: start, end: now, speakingS: speakingS, medianRate: median(rates),
             longestRunS: longest, longRuns: longRuns, pauses: pauses,

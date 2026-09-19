@@ -39,10 +39,8 @@ public struct Config: Codable, Equatable, Sendable {
     public var trendWarmupS = 10.0
     /// Minimum gap between floating nudges; the dot still changes.
     public var nudgeCooldownS = 30.0
-    /// A conversation ends after this long with no speech.
-    public var conversationEndS = 120.0
-    /// Conversations with less speech than this are not summarised.
-    public var minConversationS = 30.0
+    /// Calls with less of your speech than this are not summarised.
+    public var minConversationS = 10.0
     /// Show the live words-per-minute number next to the dot.
     public var showNumberInMenuBar = false
     /// Show a small floating pill near the top of the screen for nudges.
@@ -76,7 +74,6 @@ public struct Config: Codable, Equatable, Sendable {
         trendTauS = try c.decodeIfPresent(Double.self, forKey: .trendTauS) ?? d.trendTauS
         trendWarmupS = try c.decodeIfPresent(Double.self, forKey: .trendWarmupS) ?? d.trendWarmupS
         nudgeCooldownS = try c.decodeIfPresent(Double.self, forKey: .nudgeCooldownS) ?? d.nudgeCooldownS
-        conversationEndS = try c.decodeIfPresent(Double.self, forKey: .conversationEndS) ?? d.conversationEndS
         minConversationS = try c.decodeIfPresent(Double.self, forKey: .minConversationS) ?? d.minConversationS
         showNumberInMenuBar = try c.decodeIfPresent(Bool.self, forKey: .showNumberInMenuBar) ?? d.showNumberInMenuBar
         floatingNudge = try c.decodeIfPresent(Bool.self, forKey: .floatingNudge) ?? d.floatingNudge

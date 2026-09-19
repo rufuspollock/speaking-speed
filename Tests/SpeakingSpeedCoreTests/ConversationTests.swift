@@ -108,3 +108,20 @@ private func sample() -> ConversationSummary {
     }
     #expect(s != nil)
 }
+
+@Test func aCallOnlyEndsWhenYouEndIt() throws {
+    var cfg = Config()
+    cfg.minConversationS = 10
+    var c = ConversationTracker(config: cfg)
+    let (_, t) = feed(&c, runs: [20])
+    var tt = t
+    while tt < t + 1000 { #expect(c.update(m(run: 0), cue: .idle, now: t0 + tt, dt: 0.5) == nil); tt += 0.5 }
+    let done = c.finish(now: t0 + tt)
+    #expect(try #require(done).longRuns == 1)
+}
+
+@Test func silentCallHasNoSummary() {
+    var c = ConversationTracker(endAfterSilenceS: .infinity, minSpeakingS: 0, longRunS: 15)
+    _ = c.update(m(run: 0), cue: .idle, now: t0, dt: 0.5)
+    #expect(c.finish(now: t0 + 60) == nil)
+}

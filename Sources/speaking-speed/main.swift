@@ -109,7 +109,7 @@ func cmdReport(n: Int) {
             print(formatSummary(s, syllablesPerWord: cfg.syllablesPerWord))
         }
         let convs = try ConversationLog(url: cfg.conversationsURL).all()
-        if !convs.isEmpty { print("\nConversations:") }
+        if !convs.isEmpty { print("\nCalls:") }
         let df = DateFormatter()
         df.dateFormat = "EEE d MMM HH:mm"
         for c in convs.suffix(n) {
