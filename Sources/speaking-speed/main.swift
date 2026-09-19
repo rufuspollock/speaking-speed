@@ -111,6 +111,7 @@ func cmdReport(n: Int) {
 
 let usage = """
     usage: speaking-speed <command>
+      run [--start]   menu bar app (--start: begin listening at once)
       monitor     print live metrics in the terminal
       calibrate [--seconds S]   read a passage to set personal thresholds (default 45 s)
       report [-n N]   summaries of the last N sessions (default 10)
@@ -118,6 +119,7 @@ let usage = """
 
 let args = CommandLine.arguments.dropFirst()
 switch args.first {
+case "run": runMenuBar(loadConfig(), startListening: args.contains("--start"))
 case "monitor": cmdMonitor()
 case "calibrate":
     cmdCalibrate(seconds: args.count == 3 && args.dropFirst().first == "--seconds" ? Double(args.last!) ?? 45 : 45)
