@@ -216,3 +216,15 @@ feasibility. Decision:
 
 **Next action** (beads `spkspd-l1s`): rewrite the phase 1 plan for Swift,
 then execute.
+
+**2026-09-19, v1 shipped, then the live number was dropped as the main cue.**
+Phase 1 works (Swift menu-bar app, speaking rate within ~5 % of true counts
+on read-aloud fixtures, 16–19 MB). Using it showed the design problem the
+research predicted: a live wpm number is either laggy (10 s window) or
+jittery (5 s), and either way it becomes wallpaper and invites the guidance
+effect. Recordings also showed Rufus speeds up mainly by dropping pauses.
+Decision: v2 shows a quiet dot; live cues only for a long run without a
+pause (15 s, with a floating pill) and sustained fast pace (25 s average);
+end-of-conversation summary with a calm / OK / rushed self-rating; trends
+later. Write-up: `docs/v1-lessons.md`. Plan:
+`docs/plans/2026-09-19-v2-behavioural-feedback-plan.md`.
