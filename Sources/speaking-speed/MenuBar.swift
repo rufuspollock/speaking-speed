@@ -100,7 +100,7 @@ final class MenuBarController: NSObject {
         pipeline = nil
         guard let s = session else { return }
         session = nil
-        let summary = formatSummary(s.close())
+        let summary = formatSummary(s.close(), syllablesPerWord: cfg.syllablesPerWord)
         print(summary)
         setTitle("⚪ --")
         toggleItem.title = "Start listening"
@@ -114,10 +114,10 @@ final class MenuBarController: NSObject {
         let m = p.tick()
         let z = smoother.update(classify(m, cfg.thresholds))
         s.record(m, zone: z)
-        let rate = m.speakingRate.map { String(format: "%.1f", $0) } ?? "--"
-        let run = m.currentRunS >= cfg.thresholds.calmMaxRunS ? " \(Int(m.currentRunS))s" : ""
-        setTitle("\(glyph[z]!) \(rate)\(run)")
-        statusLine.title = "rate \(rate) syl/s · run \(Int(m.currentRunS))s · pauses \(m.pauses)"
+        let wpm = m.speakingRate.map { String(Int(cfg.wordsPerMinute($0).rounded())) } ?? "--"
+        let run = m.currentRunS >= cfg.thresholds.calmMaxRunS ? " · \(Int(m.currentRunS))s" : ""
+        setTitle("\(glyph[z]!) \(wpm) wpm\(run)")
+        statusLine.title = "~\(wpm) words/min · talking \(Int(m.currentRunS))s without a pause · \(m.pauses) pauses in 30s"
     }
 
     @objc func quit() {

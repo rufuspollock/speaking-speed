@@ -7,6 +7,9 @@ public struct Config: Codable, Equatable, Sendable {
     public var windowS = 5.0
     /// Speech detection, pauses and run length look back this far.
     public var historyS = 30.0
+    /// Converts syllables to words for display. Conversation averages about
+    /// 1.4-1.5; formal reading runs higher (the fixture script is 1.69).
+    public var syllablesPerWord = 1.5
     public var tickS = 0.5
     public var smoothFrames = 1
     public var speechMarginDB = 8.0
@@ -33,6 +36,7 @@ public struct Config: Codable, Equatable, Sendable {
         let d = Config()
         frameS = try c.decodeIfPresent(Double.self, forKey: .frameS) ?? d.frameS
         windowS = try c.decodeIfPresent(Double.self, forKey: .windowS) ?? d.windowS
+        syllablesPerWord = try c.decodeIfPresent(Double.self, forKey: .syllablesPerWord) ?? d.syllablesPerWord
         historyS = try c.decodeIfPresent(Double.self, forKey: .historyS) ?? d.historyS
         tickS = try c.decodeIfPresent(Double.self, forKey: .tickS) ?? d.tickS
         smoothFrames = try c.decodeIfPresent(Int.self, forKey: .smoothFrames) ?? d.smoothFrames
@@ -44,6 +48,11 @@ public struct Config: Codable, Equatable, Sendable {
         thresholds = try c.decodeIfPresent(Thresholds.self, forKey: .thresholds) ?? d.thresholds
         listenOnLaunch = try c.decodeIfPresent(Bool.self, forKey: .listenOnLaunch) ?? d.listenOnLaunch
         sessionsDir = try c.decodeIfPresent(String.self, forKey: .sessionsDir) ?? d.sessionsDir
+    }
+
+    /// Estimated words per minute for a rate in syllables per second.
+    public func wordsPerMinute(_ syllablesPerSecond: Double) -> Double {
+        syllablesPerSecond * 60 / syllablesPerWord
     }
 
     public var sessionsURL: URL {

@@ -52,16 +52,16 @@ func cmdMonitor() -> Never {
         let m = p.tick()
         let z = smoother.update(classify(m, cfg.thresholds))
         session.record(m, zone: z)
-        let rate = m.speakingRate.map { String(format: "%5.2f", $0) } ?? "  -- "
+        let rate = m.speakingRate.map { String(format: "%3.0f wpm (%.2f syl/s)", cfg.wordsPerMinute($0), $0) } ?? " -- wpm"
         let line = String(
-            format: "%@ rate %@ syl/s  run %5.1fs  pauses %2d  talk %4.1f/%.0fs  floor %4.0f peak %4.0f dB   ",
+            format: "%@ %@  run %5.1fs  pauses %2d  talk %4.1f/%.0fs  floor %4.0f peak %4.0f dB   ",
             glyph[z]!, rate, m.currentRunS, m.pauses, m.phonationS, m.windowS, p.lastFloorDB, p.lastPeakDB)
         print("\r" + line, terminator: "")
         fflush(stdout)
     } onStop: {
         cap.stop()
         print()
-        print(formatSummary(session.close()))
+        print(formatSummary(session.close(), syllablesPerWord: cfg.syllablesPerWord))
     }
 }
 
@@ -81,8 +81,10 @@ func cmdCalibrate(seconds: Double) -> Never {
             cfg.thresholds.calmMaxRate = t.calmMaxRate
             cfg.thresholds.fastMinRate = t.fastMinRate
             try cfg.save()
-            print(String(format: "normal rate %.2f syl/s → calm < %.2f, fast ≥ %.2f. Saved to %@",
-                         median(rates)!, t.calmMaxRate, t.fastMinRate, Config.defaultPath.path))
+            let w = cfg.wordsPerMinute
+            let normal = median(rates)!
+            print(String(format: "normal pace ~%.0f wpm (%.2f syl/s) → calm below %.0f wpm, fast from %.0f wpm. Saved to %@",
+                         w(normal), normal, w(t.calmMaxRate), w(t.fastMinRate), Config.defaultPath.path))
             exit(0)
         } catch {
             fail("\(error)")
@@ -103,7 +105,9 @@ func cmdCalibrate(seconds: Double) -> Never {
 func cmdReport(n: Int) {
     let cfg = loadConfig()
     do {
-        for s in try loadSummaries(dir: cfg.sessionsURL).suffix(n) { print(formatSummary(s)) }
+        for s in try loadSummaries(dir: cfg.sessionsURL).suffix(n) {
+            print(formatSummary(s, syllablesPerWord: cfg.syllablesPerWord))
+        }
     } catch {
         fail("\(error)")
     }

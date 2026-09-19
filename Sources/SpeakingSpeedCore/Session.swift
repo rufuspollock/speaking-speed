@@ -112,10 +112,11 @@ public func loadSummaries(dir: URL) throws -> [Summary] {
     }
 }
 
-public func formatSummary(_ s: Summary) -> String {
-    let rate = s.medianRate.map { String(format: "%.2f (p95 %.2f)", $0, s.p95Rate ?? 0) } ?? "--"
+public func formatSummary(_ s: Summary, syllablesPerWord: Double = Config().syllablesPerWord) -> String {
+    func wpm(_ r: Double) -> Int { Int((r * 60 / syllablesPerWord).rounded()) }
+    let rate = s.medianRate.map { "\(wpm($0)) wpm (p95 \(wpm(s.p95Rate ?? 0)))" } ?? "--"
     func pct(_ x: Double) -> String { "\(Int((x * 100).rounded()))%" }
-    return "\(s.name): talk \(String(format: "%.1f", s.talkS / 60)) min · rate \(rate) syl/s · "
+    return "\(s.name): talk \(String(format: "%.1f", s.talkS / 60)) min · rate \(rate) · "
         + "calm \(pct(s.pctCalm)) brisk \(pct(s.pctBrisk)) fast \(pct(s.pctFast)) · "
         + "longest run \(Int(s.longestRunS.rounded()))s · runs>15s \(s.runsOver15s)"
 }

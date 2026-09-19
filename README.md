@@ -4,9 +4,9 @@ A lightweight macOS menu-bar app that gives live feedback on speaking speed, wit
 
 ## What it measures
 
-- **Speaking rate**: syllables per second of speaking time, estimated from the mic's loudness envelope (no speech recognition). Speaking time includes your short pauses (under 2 s), so pausing more slows the number down; longer silences, such as listening on a call, are left out.
-- **Run length**: seconds of talk since your last real pause (≥ 0.5 s). Long unbroken runs push the zone up even at a calm rate.
-- **Pauses**: count and mean length over the last 10 s.
+- **Speaking rate, in words per minute**: estimated from the syllables the app hears in the last 5 s (from the mic's loudness, no speech recognition), converted at 1.5 syllables per word (`syllablesPerWord` in the config). Speaking time includes your short pauses (under 2 s), so pausing more slows the number down; longer silences, such as listening on a call, are left out. It is an estimate: formal or technical speech has longer words, so it reads high.
+- **Run length**: seconds of talk since your last real pause (≥ 0.5 s), shown in the title once it passes 12 s. Long unbroken runs push the zone up even at a calm rate.
+- **Pauses**: count over the last 30 s.
 
 These combine into a zone: 🟢 calm, 🟡 brisk, 🔴 fast. The zone only changes after it has held for a couple of ticks, so the indicator stays calm too.
 
@@ -36,7 +36,7 @@ Commands:
 
 | Command | What it does |
 |---|---|
-| `run` | Menu bar indicator from the terminal. Title is `zone rate [run]`. |
+| `run` | Menu bar indicator from the terminal. Title is `zone wpm [run]`. |
 | `monitor` | Same metrics on one updating terminal line, plus noise floor and peak dB for tuning. |
 | `record FILE [--seconds S]` | Save the mic to a WAV file. |
 | `analyze FILE... [key=value...]` | Whole-file metrics for recorded audio; `key=value` overrides detector settings, e.g. `minDipDB=2`. |
@@ -52,7 +52,7 @@ Use headphones on calls, otherwise the other side's voice counts as yours.
 - Config: `~/.config/speaking-speed/config.json` (written by `calibrate`; any key left out uses its default).
 - Sessions: `~/.local/share/speaking-speed/sessions/*.csv`, one row per half-second tick.
 
-The rate is averaged over the last 10 s, so it takes a few seconds to follow a change of pace. Nothing counts as speech unless the window gets louder than `minLoudDB` (default −35 dBFS); if your mic is quiet and the rate never appears, lower it. The detector defaults were tuned on the clips in `fixtures/`.
+The rate is averaged over the last 5 s, so it takes a few seconds to follow a change of pace (`windowS`; shorter is quicker but jumpier). Nothing counts as speech unless the window gets louder than `minLoudDB` (default −35 dBFS); if your mic is quiet and the rate never appears, lower it. The detector defaults were tuned on the clips in `fixtures/`.
 
 ## More
 

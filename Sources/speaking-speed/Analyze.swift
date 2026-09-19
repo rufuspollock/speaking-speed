@@ -61,9 +61,9 @@ func cmdAnalyze(_ args: [String]) {
             p.push(x)
             let m = p.tick()
             func f(_ v: Double?) -> String { v.map { String(format: "%.2f", $0) } ?? "--" }
-            print(String(format: "%@: %.1fs  talk %.1fs  speaking %.1fs  syllables %d  rate %@  articulation %@ syl/s  pauses %d  floor %.0f peak %.0f dB",
+            print(String(format: "%@: %.1fs  talk %.1fs  speaking %.1fs  syllables %d  rate %@ syl/s (~%.0f wpm)  articulation %@ syl/s  pauses %d  floor %.0f peak %.0f dB",
                          (path as NSString).lastPathComponent, Double(x.count) / sr, m.phonationS, m.speakingS,
-                         m.syllables, f(m.speakingRate), f(m.articulationRate), m.pauses, p.lastFloorDB, p.lastPeakDB))
+                         m.syllables, f(m.speakingRate), base.wordsPerMinute(m.speakingRate ?? 0), f(m.articulationRate), m.pauses, p.lastFloorDB, p.lastPeakDB))
         } catch {
             print("\(path): \(error)")
         }

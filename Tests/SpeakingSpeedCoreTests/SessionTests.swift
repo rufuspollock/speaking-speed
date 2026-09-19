@@ -46,3 +46,14 @@ private func tempDir() -> URL {
     #expect(summaries[0].medianRate == 3.5)
     #expect(summaries[0].ticks == 2)
 }
+
+@Test func wordsPerMinuteFromSyllableRate() {
+    var c = Config()
+    c.syllablesPerWord = 1.5
+    #expect(abs(c.wordsPerMinute(2.5) - 100) < 1e-9)
+}
+
+@Test func summaryShowsWordsPerMinute() {
+    let s = summarize([m(2.5), m(2.5)], zones: [.calm, .calm], tickS: 0.5, name: "x")
+    #expect(formatSummary(s, syllablesPerWord: 1.5).contains("100 wpm"))
+}
