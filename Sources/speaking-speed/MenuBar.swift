@@ -1,4 +1,5 @@
-// Menu-bar indicator: glyph + rate (+ run length when long), Start/Stop, Quit.
+// Menu-bar indicator: a quiet dot that changes only when there is something to
+// act on (see Nudger). Live numbers live in the menu, one click away.
 import AppKit
 import ServiceManagement
 import SpeakingSpeedCore
@@ -12,20 +13,36 @@ final class MenuBarController: NSObject {
     private let lastSummary = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let autoListenItem = NSMenuItem(title: "Listen when app starts", action: #selector(toggleAutoListen), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Open at login", action: #selector(toggleLogin), keyEquivalent: "")
+    private let nowItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let trendItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let showNumberItem = NSMenuItem(title: "Show words per minute in menu bar", action: #selector(toggleShowNumber), keyEquivalent: "")
+    private let floatingItem = NSMenuItem(title: "Floating nudges", action: #selector(toggleFloating), keyEquivalent: "")
     private var capture: Capture?
     private var pipeline: Pipeline?
     private var session: Session?
     private var smoother = ZoneSmoother()
+    private var trend = TrendTracker()
+    private var nudger = Nudger(runNudgeS: 15, fastMinRate: 4.5, cooldownS: 30)
+    private var conversation = ConversationTracker()
     private var timer: Timer?
 
     init(cfg: Config) {
         self.cfg = cfg
         super.init()
         item.button?.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-        setTitle("⚪ --")
+        setTitle(dot[.idle]!)
+        resetTrackers()
         let menu = NSMenu()
         toggleItem.target = self
         statusLine.isEnabled = false
+        nowItem.isEnabled = false
+        trendItem.isEnabled = false
+        nowItem.isHidden = true
+        trendItem.isHidden = true
+        showNumberItem.target = self
+        showNumberItem.state = cfg.showNumberInMenuBar ? .on : .off
+        floatingItem.target = self
+        floatingItem.state = cfg.floatingNudge ? .on : .off
         lastSummary.isEnabled = false
         lastSummary.isHidden = true
         let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
@@ -36,7 +53,8 @@ final class MenuBarController: NSObject {
         // Login items need a real app bundle (scripts/install.sh), not `swift run`.
         loginItem.isHidden = Bundle.main.bundleURL.pathExtension != "app"
         refreshLoginItem()
-        for i in [toggleItem, statusLine, lastSummary, .separator(), autoListenItem, loginItem, .separator(), quit] {
+        for i in [toggleItem, .separator(), nowItem, trendItem, statusLine, lastSummary, .separator(),
+                  showNumberItem, floatingItem, autoListenItem, loginItem, .separator(), quit] {
             menu.addItem(i)
         }
         item.menu = menu
@@ -46,6 +64,25 @@ final class MenuBarController: NSObject {
         cfg.listenOnLaunch.toggle()
         autoListenItem.state = cfg.listenOnLaunch ? .on : .off
         do { try cfg.save() } catch { statusLine.title = "could not save config: \(error)" }
+    }
+
+    @objc private func toggleShowNumber() {
+        cfg.showNumberInMenuBar.toggle()
+        showNumberItem.state = cfg.showNumberInMenuBar ? .on : .off
+        do { try cfg.save() } catch { statusLine.title = "could not save config: \(error)" }
+    }
+
+    @objc private func toggleFloating() {
+        cfg.floatingNudge.toggle()
+        floatingItem.state = cfg.floatingNudge ? .on : .off
+        do { try cfg.save() } catch { statusLine.title = "could not save config: \(error)" }
+    }
+
+    /// Fresh state for each listening stretch.
+    private func resetTrackers() {
+        trend = TrendTracker(tauS: cfg.trendTauS, warmupS: cfg.trendWarmupS)
+        nudger = Nudger(config: cfg)
+        conversation = ConversationTracker(config: cfg)
     }
 
     @objc private func toggleLogin() {
@@ -87,6 +124,9 @@ final class MenuBarController: NSObject {
             return
         }
         smoother = ZoneSmoother()
+        resetTrackers()
+        nowItem.isHidden = false
+        trendItem.isHidden = false
         toggleItem.title = "Stop listening"
         timer = Timer.scheduledTimer(
             timeInterval: cfg.tickS, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
@@ -95,29 +135,41 @@ final class MenuBarController: NSObject {
     private func stop() {
         timer?.invalidate()
         timer = nil
+        if session != nil, let done = conversation.finish(now: Date()) { conversationEnded(done) }
         capture?.stop()
         capture = nil
         pipeline = nil
         guard let s = session else { return }
         session = nil
-        let summary = formatSummary(s.close(), syllablesPerWord: cfg.syllablesPerWord)
-        print(summary)
-        setTitle("⚪ --")
+        print(formatSummary(s.close(), syllablesPerWord: cfg.syllablesPerWord))
+        setTitle(dot[.idle]!)
         toggleItem.title = "Start listening"
         statusLine.title = "idle"
-        lastSummary.title = "Last: " + summary
-        lastSummary.isHidden = false
+        nowItem.isHidden = true
+        trendItem.isHidden = true
     }
+
+    private func conversationEnded(_ s: ConversationSummary) {}
 
     @objc private func tick() {
         guard let p = pipeline, let s = session else { return }
         let m = p.tick()
         let z = smoother.update(classify(m, cfg.thresholds))
-        s.record(m, zone: z)
-        let wpm = m.speakingRate.map { String(Int(cfg.wordsPerMinute($0).rounded())) } ?? "--"
-        let run = m.currentRunS >= cfg.thresholds.calmMaxRunS ? " · \(Int(m.currentRunS))s" : ""
-        setTitle("\(glyph[z]!) \(wpm) wpm\(run)")
-        statusLine.title = "~\(wpm) words/min · talking \(Int(m.currentRunS))s without a pause · \(m.pauses) pauses in 30s"
+        s.record(m, zone: z)                      // per-tick CSV unchanged
+        let avg = trend.update(m.speakingRate, dt: cfg.tickS)
+        let u = nudger.update(m, trend: avg, now: Date().timeIntervalSinceReferenceDate)
+        // if u.onset && cfg.floatingNudge { nudgePanel.show(u.cue) }
+        // if u.cue < .slow { nudgePanel.hideIfShowing() }
+        if let done = conversation.update(m, cue: u.cue, nudgeShown: u.onset && cfg.floatingNudge,
+                                          now: Date(), dt: cfg.tickS) {
+            conversationEnded(done)
+        }
+        func wpm(_ r: Double?) -> String { r.map { String(Int(cfg.wordsPerMinute($0).rounded())) } ?? "--" }
+        let number = cfg.showNumberInMenuBar ? " \(wpm(m.speakingRate))" : ""
+        setTitle(dot[u.cue]! + number)
+        nowItem.title = "Now: ~\(wpm(m.speakingRate)) wpm (last \(Int(cfg.windowS)) s)"
+        trendItem.title = "Last \(Int(cfg.trendTauS)) s: ~\(wpm(avg)) wpm"
+        statusLine.title = "Talking \(Int(m.currentRunS)) s without a pause · \(m.pauses) pauses in \(Int(cfg.historyS)) s"
     }
 
     @objc func quit() {
@@ -125,6 +177,8 @@ final class MenuBarController: NSObject {
         NSApp.terminate(nil)
     }
 }
+
+let dot: [Cue: String] = [.idle: "⚪", .ok: "🟢", .slow: "🔴", .pause: "🟠"]
 
 @MainActor
 func runMenuBar(_ cfg: Config, startListening: Bool) -> Never {
