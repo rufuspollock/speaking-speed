@@ -2,15 +2,6 @@
 import AVFoundation
 import SpeakingSpeedCore
 
-func readMono(_ path: String) throws -> (samples: [Float], sampleRate: Double) {
-    let file = try AVAudioFile(forReading: URL(fileURLWithPath: path))
-    let format = file.processingFormat
-    let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(file.length))!
-    try file.read(into: buf)
-    let samples = Array(UnsafeBufferPointer(start: buf.floatChannelData![0], count: Int(buf.frameLength)))
-    return (samples, format.sampleRate)
-}
-
 /// Apply `key=value` overrides (numbers) to a config, via its JSON form.
 func overriding(_ cfg: Config, with pairs: [String]) -> Config {
     guard !pairs.isEmpty else { return cfg }
