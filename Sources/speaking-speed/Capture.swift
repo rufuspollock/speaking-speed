@@ -41,14 +41,21 @@ final class Capture {
         }
     }
 
+    var format: AVAudioFormat { engine.inputNode.outputFormat(forBus: 0) }
+
     func start(into pipeline: Pipeline) throws {
-        let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        guard format.channelCount > 0, format.sampleRate > 0 else { throw CaptureError.noInput }
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+        try start { buffer in
             guard let ch = buffer.floatChannelData else { return }
             pipeline.push(Array(UnsafeBufferPointer(start: ch[0], count: Int(buffer.frameLength))))
         }
+    }
+
+    /// `onBuffer` runs on the audio thread.
+    func start(onBuffer: @escaping @Sendable (AVAudioPCMBuffer) -> Void) throws {
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        guard format.channelCount > 0, format.sampleRate > 0 else { throw CaptureError.noInput }
+        input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in onBuffer(buffer) }
         engine.prepare()
         try engine.start()
     }

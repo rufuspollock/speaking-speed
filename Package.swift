@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "speaking-speed",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v15)],
     products: [
         .executable(name: "speaking-speed", targets: ["speaking-speed"]),
     ],

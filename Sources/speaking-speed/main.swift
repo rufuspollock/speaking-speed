@@ -114,6 +114,8 @@ let usage = """
       run [--start]   menu bar app (--start: begin listening at once)
       monitor     print live metrics in the terminal
       calibrate [--seconds S]   read a passage to set personal thresholds (default 45 s)
+      record FILE [--seconds S]   save the mic to a WAV file
+      analyze FILE...   whole-file metrics for recorded audio
       report [-n N]   summaries of the last N sessions (default 10)
     """
 
@@ -123,6 +125,12 @@ case "run": runMenuBar(loadConfig(), startListening: args.contains("--start"))
 case "monitor": cmdMonitor()
 case "calibrate":
     cmdCalibrate(seconds: args.count == 3 && args.dropFirst().first == "--seconds" ? Double(args.last!) ?? 45 : 45)
+case "record":
+    guard args.count >= 2 else { fail(usage) }
+    let a = Array(args)
+    cmdRecord(path: a[1], seconds: a.count == 4 && a[2] == "--seconds" ? Double(a[3]) : nil)
+case "analyze":
+    cmdAnalyze(Array(args.dropFirst()))
 case "report":
     cmdReport(n: args.count == 3 && args.dropFirst().first == "-n" ? Int(args.last!) ?? 10 : 10)
 case "--version": print(version)
