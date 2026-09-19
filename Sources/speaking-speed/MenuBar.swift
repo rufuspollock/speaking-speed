@@ -26,6 +26,9 @@ final class MenuBarController: NSObject {
     private var conversation = ConversationTracker()
     private var timer: Timer?
     private let nudgePanel = NudgePanel()
+    private lazy var notifier = ConversationNotifier { [weak self] id, r in self?.rate(id, r) }
+    private var lastConversationID: UUID?
+    private let rateMenuItem = NSMenuItem(title: "Rate last conversation", action: nil, keyEquivalent: "")
 
     init(cfg: Config) {
         self.cfg = cfg
@@ -46,6 +49,15 @@ final class MenuBarController: NSObject {
         floatingItem.state = cfg.floatingNudge ? .on : .off
         lastSummary.isEnabled = false
         lastSummary.isHidden = true
+        let rateMenu = NSMenu()
+        for r in Rating.allCases {
+            let i = NSMenuItem(title: r.rawValue.capitalized, action: #selector(rateLast(_:)), keyEquivalent: "")
+            i.target = self
+            i.representedObject = r.rawValue
+            rateMenu.addItem(i)
+        }
+        rateMenuItem.submenu = rateMenu
+        rateMenuItem.isHidden = true
         let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         autoListenItem.target = self
@@ -54,11 +66,12 @@ final class MenuBarController: NSObject {
         // Login items need a real app bundle (scripts/install.sh), not `swift run`.
         loginItem.isHidden = Bundle.main.bundleURL.pathExtension != "app"
         refreshLoginItem()
-        for i in [toggleItem, .separator(), nowItem, trendItem, statusLine, lastSummary, .separator(),
+        for i in [toggleItem, .separator(), nowItem, trendItem, statusLine, lastSummary, rateMenuItem, .separator(),
                   showNumberItem, floatingItem, autoListenItem, loginItem, .separator(), quit] {
             menu.addItem(i)
         }
         item.menu = menu
+        _ = notifier
     }
 
     @objc private func toggleAutoListen() {
@@ -151,7 +164,28 @@ final class MenuBarController: NSObject {
         trendItem.isHidden = true
     }
 
-    private func conversationEnded(_ s: ConversationSummary) {}
+    private func conversationEnded(_ s: ConversationSummary) {
+        let text = formatConversation(s, syllablesPerWord: cfg.syllablesPerWord, longRunS: cfg.runNudgeS)
+        do { try ConversationLog(url: cfg.conversationsURL).append(s) } catch { statusLine.title = "\(error)" }
+        lastConversationID = s.id
+        lastSummary.title = "Last conversation: " + text
+        lastSummary.isHidden = false
+        rateMenuItem.title = "Rate last conversation"
+        rateMenuItem.isHidden = false
+        notifier.post(s, text: text)
+        print(text)
+    }
+
+    @objc private func rateLast(_ sender: NSMenuItem) {
+        guard let id = lastConversationID, let raw = sender.representedObject as? String,
+              let r = Rating(rawValue: raw) else { return }
+        rate(id, r)
+    }
+
+    private func rate(_ id: UUID, _ r: Rating) {
+        do { try ConversationLog(url: cfg.conversationsURL).rate(id, r) } catch { statusLine.title = "\(error)" }
+        if id == lastConversationID { rateMenuItem.title = "Rated: \(r.rawValue)" }
+    }
 
     @objc private func tick() {
         guard let p = pipeline, let s = session else { return }
